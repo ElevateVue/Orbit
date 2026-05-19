@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin View - Orbit</title>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="auth.js"></script>
+  <script defer src="logo-animation.js"></script>
+  <script defer src="orbit-chart.js"></script>
+  <script defer src="admin.js"></script>
+</head>
+<body class="orbit-shell">
+  <header class="topbar">
+    <div class="brand-wrap">
+      <a class="brand-link" href="signin.html">
+        <div class="brand-logo"><canvas data-orbit-logo data-size="40" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas></div>
+        <div class="brand-text">Orbit <span>Admin View</span></div>
+      </a>
+    </div>
+    <div class="topbar-actions">
+      <button class="avatar-btn" id="adminSignoutBtn" type="button">A</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1 id="adminName">Ashwin Admin</h1>
+          <p id="adminMeta">Upload, edit, and publish client dashboards</p>
+        </div>
+        <div class="panel-actions">
+          <div class="inline-status" id="adminClientCount">0 client accounts</div>
+          <button class="ghost-btn small" id="openAddUserBtn" type="button">Add User</button>
+        </div>
+      </div>
+
+      <section class="split-panels admin-console">
+        <article class="sub-panel">
+          <div class="sub-panel-head">
+            <div>
+              <h2>Client Accounts</h2>
+              <p>Select a client to manage the dashboard content they will see.</p>
+            </div>
+          </div>
+          <ul class="saved-list admin-list admin-client-list" id="clientsList"></ul>
+        </article>
+
+        <article class="sub-panel admin-detail-panel" id="adminClientDetail">
+          <div class="admin-placeholder">
+            <h2>Select a client</h2>
+            <p>Choose a name from the left to upload or edit the dashboard you want to share.</p>
+          </div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal-backdrop hidden" id="addUserModal">
+    <div class="report-modal">
+      <div class="modal-head">
+        <div>
+          <h2>Add Client User</h2>
+          <p>Create a client entry first. They can then finish signup using the same email.</p>
+        </div>
+        <button class="close-btn" id="closeAddUserBtn" type="button">x</button>
+      </div>
+      <div class="modal-form">
+        <div class="field-grid">
+          <label class="field">
+            <span>First Name</span>
+            <input id="newClientFirstName" type="text" />
+          </label>
+          <label class="field">
+            <span>Last Name</span>
+            <input id="newClientLastName" type="text" />
+          </label>
+        </div>
+        <label class="field">
+          <span>Email</span>
+          <input id="newClientEmail" type="email" />
+        </label>
+        <div class="inline-status" id="addUserStatus"></div>
+        <button class="primary-btn wide" id="submitAddUserBtn" type="button">Create Client User</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

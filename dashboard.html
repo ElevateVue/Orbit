@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Overview - Orbit</title>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="auth.js"></script>
+  <script defer src="logo-animation.js"></script>
+  <script defer src="orbit-chart.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body class="orbit-shell">
+  <header class="topbar">
+    <div class="brand-wrap">
+      <a class="brand-link" href="signin.html">
+        <div class="brand-logo"><canvas data-orbit-logo data-size="40" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas></div>
+        <div class="brand-text">Orbit <span>by Elevate Vue</span></div>
+      </a>
+    </div>
+    <div class="topbar-actions">
+      <button class="avatar-btn" id="signoutBtn" type="button">S</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="panel dashboard-panel">
+      <div class="panel-head">
+        <div>
+          <h1>Dashboard Overview</h1>
+          <p>View your social media dashboards by platform.</p>
+        </div>
+      </div>
+
+      <div class="period-row">
+        <div class="period-label" id="periodLabel">Waiting for dashboard data</div>
+        <div class="inline-status" id="dashboardStatus"></div>
+      </div>
+
+      <div class="platform-selector-row" id="platformSelector"></div>
+
+      <div class="metric-grid" id="dashboardMetricGrid"></div>
+
+      <div class="metric-actions" id="metricActions"></div>
+
+      <section class="chart-panel">
+        <div class="chart-meta">
+          <div class="chart-title-block">
+            <div class="chart-period" id="chartPeriodLabel">No data available</div>
+          </div>
+          <div class="legend-row" id="chartLegend"></div>
+        </div>
+        <div class="chart-frame">
+          <canvas id="metricChart"></canvas>
+          <div class="chart-tooltip" id="chartTooltip"></div>
+        </div>
+      </section>
+
+      <section class="split-panels">
+        <article class="sub-panel feedback-panel-expanded">
+          <div class="sub-panel-head">
+            <div>
+              <h2>Feedback</h2>
+              <p>Dashboard feedback and action points.</p>
+            </div>
+            <div class="mini-actions hidden" id="clientFeedbackActions">
+              <button class="primary-btn small" id="saveFeedbackBtn" type="button">Save</button>
+            </div>
+          </div>
+          <textarea id="aiFeedbackInput" class="dark-textarea feedback-expanded" placeholder="No feedback available yet." readonly></textarea>
+        </article>
+
+        <article class="sub-panel">
+          <div class="sub-panel-head report-links-head">
+            <div>
+              <h2>Saved Reports</h2>
+              <p>Open and revisit your reports anytime.</p>
+            </div>
+            <a class="ghost-btn small" href="report.html">Open Reports Page</a>
+          </div>
+          <ul class="saved-list" id="dashboardReportList"></ul>
+        </article>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

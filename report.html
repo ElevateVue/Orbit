@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Reports - Orbit</title>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="auth.js"></script>
+  <script defer src="logo-animation.js"></script>
+  <script defer src="orbit-chart.js"></script>
+  <script defer src="report.js"></script>
+</head>
+<body class="orbit-shell">
+  <header class="topbar">
+    <div class="brand-wrap">
+      <a class="brand-link" href="signin.html">
+        <div class="brand-logo"><canvas data-orbit-logo data-size="40" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas></div>
+        <div class="brand-text">Orbit <span>by Elevate Vue</span></div>
+      </a>
+    </div>
+    <div class="topbar-actions">
+      <button class="avatar-btn" id="reportSignoutBtn" type="button">S</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="panel reports-shell">
+      <div class="reports-head">
+        <div>
+          <h1>AI Reports</h1>
+          <p>AI-generated insights and performance analysis.</p>
+        </div>
+        <a class="ghost-btn" href="dashboard.html">Back to Dashboard</a>
+      </div>
+
+      <section class="sub-panel report-list-panel">
+        <div class="sub-panel-head">
+          <div>
+            <h2>Saved Reports</h2>
+            <p>Reports stay fixed until you edit or delete them.</p>
+          </div>
+        </div>
+        <div id="reportCards" class="report-card-list"></div>
+      </section>
+
+      <section class="report-detail hidden" id="reportDetail">
+        <article class="sub-panel hero-report">
+          <div class="hero-report-left">
+            <div class="brand-logo large"><canvas data-orbit-logo data-size="88" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas></div>
+            <div>
+              <button class="text-btn" id="backToReportsBtn" type="button">Back to Reports</button>
+              <h2 id="reportDetailTitle">Report Title</h2>
+              <p id="reportDetailMeta"></p>
+            </div>
+          </div>
+          <div class="hero-report-right">
+            <img id="reportLogoImage" class="report-logo hidden" alt="Client logo" />
+            <div class="brand-logo large" id="reportLogoFallback"><canvas data-orbit-logo data-size="88" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas></div>
+            <button class="ghost-btn" id="deleteReportBtn" type="button">Delete</button>
+          </div>
+        </article>
+
+        <article class="sub-panel">
+          <div class="sub-panel-head">
+            <h2>Key Metrics</h2>
+            <div class="platform-badge" id="reportPlatformBadge">Instagram</div>
+          </div>
+          <div class="metric-grid metric-grid-report" id="reportMetricGrid"></div>
+        </article>
+
+        <article class="sub-panel">
+          <div class="sub-panel-head">
+            <div>
+              <h2>Performance</h2>
+              <p id="reportChartPeriod">Monthly snapshot</p>
+            </div>
+            <div class="legend-row" id="reportChartLegend"></div>
+          </div>
+          <div class="chart-frame report-chart-frame">
+            <canvas id="reportChart"></canvas>
+            <div class="chart-tooltip" id="reportChartTooltip"></div>
+          </div>
+        </article>
+
+        <article class="sub-panel">
+          <div class="sub-panel-head">
+            <h2>Key Takeaways</h2>
+            <div class="mini-actions">
+              <button class="ghost-btn small" id="addTakeawayBtn" type="button">Add Point</button>
+              <button class="ghost-btn small" id="saveTakeawaysBtn" type="button">Save</button>
+            </div>
+          </div>
+          <div id="takeawayList" class="ordered-note-list"></div>
+        </article>
+
+        <article class="sub-panel">
+          <div class="sub-panel-head">
+            <h2>Action Plan</h2>
+            <div class="mini-actions">
+              <button class="ghost-btn small" id="addActionPlanBtn" type="button">Add Point</button>
+              <button class="ghost-btn small" id="saveActionPlanBtn" type="button">Save</button>
+            </div>
+          </div>
+          <div id="actionPlanList" class="ordered-note-list"></div>
+        </article>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

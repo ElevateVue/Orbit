@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.venv/
+.venv
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+api.env
+
+# Configuration files with secrets
+backend/ga4-config.json
+backend/gsc-config.json
+backend/*.key
+backend/*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+*.log
+npm-debug.log*
+
+# Sessions
+backend/sessions.json
+backend/newsletter-subscribers.json
+data/store.json
+data/*.db
+server.out.log
+server.err.log
+
+# Temporary
+*.tmp
+.temp/
+temp/
+.vercel

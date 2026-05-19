@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In - Orbit</title>
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="auth.js"></script>
+  <script defer src="signin.js"></script>
+</head>
+<body class="auth-shell">
+  <section class="auth-hero">
+    <div class="auth-hero-inner">
+      <div class="hero-chip">LET'S TALK</div>
+      <h1>Ready to <span class="hero-gradient">Elevate</span><br />Your Brand?</h1>
+      <p>We combine strategic thinking with creative execution to build brands that stand out and drive measurable results. We are more than marketers. We are growth partners.</p>
+      <div class="hero-points">
+        <div class="hero-point"><span class="hero-icon">✉</span><span>operations@elevate-vue.com</span></div>
+        <div class="hero-point"><span class="hero-icon">•</span><span>Available remotely worldwide</span></div>
+        <div class="hero-point"><span class="hero-icon">⚡</span><span>Response within 24 hours</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="auth-panel">
+    <div class="auth-card signin-card">
+      <h2>Hello!</h2>
+      <p class="auth-subline">Need an account? <a href="login.html">Create one</a></p>
+      <form id="signinForm" class="auth-form">
+        <div class="toggle-row">
+          <button type="button" class="toggle-pill active" data-role-option="client">Client</button>
+          <button type="button" class="toggle-pill" data-role-option="admin">Admin</button>
+        </div>
+        <input type="hidden" id="portalRole" value="client" />
+
+        <label class="field">
+          <span>Email</span>
+          <input id="email" type="email" placeholder="Email Address" required />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <div class="password-field">
+            <input id="password" type="password" placeholder="Password" required />
+            <button class="password-toggle" type="button" data-password-toggle aria-label="Show password">👁</button>
+          </div>
+        </label>
+
+        <button class="primary-btn wide" type="submit">Login</button>
+        <div class="inline-status" id="signinStatus"></div>
+      </form>
+    </div>
+  </section>
+</body>
+</html>

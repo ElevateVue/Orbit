@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Orbit logo">
+  <defs>
+    <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6b5fcf"/>
+      <stop offset="50%" stop-color="#8ab4f8"/>
+      <stop offset="100%" stop-color="#7ee8fa"/>
+    </linearGradient>
+
+    <style>
+      .ring {
+        fill: none;
+        stroke: #1e2540;
+        stroke-width: 2.5;
+      }
+
+      .arc {
+        fill: none;
+        stroke: url(#arcGradient);
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 188 314;
+        stroke-dashoffset: 188;
+        animation: drawArc 1.1s cubic-bezier(0.4, 0, 0.2, 1) 0.3s forwards;
+      }
+
+      .dot-start {
+        fill: #6b5fcf;
+        transform-origin: 80px 12px;
+        opacity: 0;
+        animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s forwards;
+      }
+
+      .dot-end {
+        fill: #7ee8fa;
+        transform-origin: 147px 85px;
+        opacity: 0;
+        animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 1.25s forwards;
+      }
+
+      .dot-end-glow {
+        fill: #7ee8fa;
+        opacity: 0;
+        filter: blur(8px);
+        animation: glowPulse 0.6s ease-out 1.35s forwards;
+      }
+
+      @keyframes drawArc {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @keyframes popIn {
+        0% {
+          opacity: 0;
+          transform: scale(0);
+        }
+
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      @keyframes glowPulse {
+        0% {
+          opacity: 0;
+        }
+
+        50% {
+          opacity: 0.45;
+        }
+
+        100% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </defs>
+
+  <circle class="ring" cx="80" cy="80" r="68"/>
+  <circle class="arc" cx="80" cy="80" r="68" transform="rotate(-90 80 80)"/>
+  <circle class="dot-end-glow" cx="147" cy="85" r="18"/>
+  <circle class="dot-start" cx="80" cy="12" r="11"/>
+  <circle class="dot-end" cx="147" cy="85" r="13"/>
+</svg>
