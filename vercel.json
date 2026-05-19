@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm install",
   "outputDirectory": ".",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/[...path].js" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/signin.html" }
+  ],
   "env": {
     "NODE_ENV": "production"
   }
