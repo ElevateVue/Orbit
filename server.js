@@ -302,24 +302,24 @@ function sendText(res, statusCode, text) {
 }
 
 function parseBody(req) {
+  // Vercel may pre-parse the body — use it directly if available
+  if (req.body !== undefined) {
+    if (typeof req.body === 'string') {
+      try { return Promise.resolve(JSON.parse(req.body)); }
+      catch { return Promise.reject(new Error('Invalid JSON body')); }
+    }
+    return Promise.resolve(req.body || {});
+  }
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 20_000_000) {
-        reject(new Error('Request too large'));
-      }
+      if (body.length > 20_000_000) reject(new Error('Request too large'));
     });
     req.on('end', () => {
-      if (!body) {
-        resolve({});
-        return;
-      }
-      try {
-        resolve(JSON.parse(body));
-      } catch (error) {
-        reject(new Error('Invalid JSON body'));
-      }
+      if (!body) { resolve({}); return; }
+      try { resolve(JSON.parse(body)); }
+      catch { reject(new Error('Invalid JSON body')); }
     });
     req.on('error', reject);
   });
