@@ -1,8 +1,4 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/[...path]" },
-    { "source": "/(.*)", "destination": "/$1" }
-  ],
   "env": {
     "NODE_ENV": "production"
   }
