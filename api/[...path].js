@@ -1,9 +1,6 @@
 const { handleApi } = require('../server.js');
 
-// Disable Vercel's body parser so our stream-based parseBody in server.js works
-module.exports.config = { api: { bodyParser: false } };
-
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     await handleApi(req, res, url);
@@ -13,3 +10,8 @@ module.exports = async (req, res) => {
     res.end(JSON.stringify({ error: 'Internal server error' }));
   }
 };
+
+// Disable Vercel's body parser so our stream-based parseBody in server.js works
+handler.config = { api: { bodyParser: false } };
+
+module.exports = handler;
