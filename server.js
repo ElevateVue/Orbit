@@ -31,8 +31,7 @@ if (fs.existsSync('./api.env')) {
 }
 
 
-// Setup connection string (Hardcoded as a fallback if your api.env doesn't have it)
-const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_slh67YoSAzjt@ep-plain-heart-ao0ct5gr-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const connectionString = process.env.DATABASE_URL;
 // Initialize the database connection pool
 const pool = new Pool({
   connectionString: connectionString
