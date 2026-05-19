@@ -37,26 +37,22 @@ const pool = new Pool({
   connectionString: connectionString
 });
 
-// Test the connection instantly on startup without hanging cloud builds
-pool.query('SELECT NOW()', async (err, res) => {
-  if (err) {
-    console.error('❌ Database connection error:', err.stack);
-  } else {
-    console.log('✅ Connected to PostgreSQL successfully!');
-    try {
-      await initializeDatabase();
-      console.log('✅ All PostgreSQL tables verified and active!');
-    } catch (tableError) {
-      console.error('❌ Error creating database tables:', tableError.message);
+// Only run startup DB check when running as a persistent server (not serverless)
+if (require.main === module) {
+  pool.query('SELECT NOW()', async (err) => {
+    if (err) {
+      console.error('❌ Database connection error:', err.stack);
+    } else {
+      console.log('✅ Connected to PostgreSQL successfully!');
+      try {
+        await initializeDatabase();
+        console.log('✅ All PostgreSQL tables verified and active!');
+      } catch (tableError) {
+        console.error('❌ Error creating database tables:', tableError.message);
+      }
     }
-  }
-
-  // CRITICAL VERCEL FIX: If running inside a Vercel build environment, close the pool immediately so the build can exit!
-  if (process.env.VERCEL_ENV && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    console.log('📦 Vercel build step detected. Closing database pool to allow exit...');
-    await pool.end();
-  }
-});
+  });
+}
 
 
 
@@ -815,8 +811,18 @@ async function generateAdminSuggestion(datasetId, type) {
   return await upsertSuggestionForUser(dataset.userId, dataset.id, type, content);
 }
 
+let dbInitialized = false;
+async function lazyInitialize() {
+  if (dbInitialized) return;
+  try {
+    await initializeDatabase();
+    dbInitialized = true;
+  } catch (err) {
+    console.error('❌ DB init error:', err.message);
+  }
+}
+
 async function handleApi(req, res, url) {
-  // Lazy initialize database on first request
   await lazyInitialize();
   
   if (req.method === 'GET' && url.pathname === '/api/users') {
