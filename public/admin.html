@@ -92,12 +92,52 @@
     .dataset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
     .dataset-card {
       background: #1e293b; border: 1px solid #334155; border-radius: 10px;
-      padding: 16px; cursor: pointer; transition: border-color 0.15s;
+      padding: 16px; transition: border-color 0.15s;
     }
     .dataset-card:hover { border-color: #6366f1; }
     .dataset-card h3 { font-size: 14px; color: #f1f5f9; font-weight: 600; margin-bottom: 4px; }
     .dataset-card .meta { font-size: 12px; color: #64748b; }
     .dataset-card .platform-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #1e3a5f; color: #60a5fa; margin-bottom: 8px; }
+    .dataset-card-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+    .btn-xs { padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-xs-primary { background: #6366f1; color: #fff; }
+    .btn-xs-primary:hover { background: #4f46e5; }
+    .btn-xs-ghost { background: none; border: 1px solid #334155; color: #94a3b8; }
+    .btn-xs-ghost:hover { border-color: #6366f1; color: #a5b4fc; }
+    .btn-xs-danger { background: none; border: 1px solid #ef444455; color: #f87171; }
+    .btn-xs-danger:hover { background: #7f1d1d22; }
+
+    /* Client view preview */
+    .client-preview { background: #0a1120; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; }
+    .client-preview .preview-label { font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
+    .preview-label::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #6366f1; }
+    .platform-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .platform-pill { padding: 6px 14px; border-radius: 20px; border: 1px solid #334155; font-size: 12px; font-weight: 600; color: #94a3b8; cursor: pointer; transition: all 0.15s; background: none; }
+    .platform-pill.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+    .metric-preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .metric-preview-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
+    .metric-preview-card .m-label { font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
+    .metric-preview-card .m-value { font-size: 22px; color: #f1f5f9; font-weight: 700; }
+    .chart-preview-wrap { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    .chart-preview-wrap canvas { width: 100%; height: 200px; }
+    .feedback-preview { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; color: #64748b; font-size: 13px; min-height: 80px; }
+    .preview-empty { text-align: center; padding: 40px; color: #334155; font-size: 14px; }
+
+    /* CSV drop zone */
+    .csv-dropzone {
+      border: 2px dashed #334155; border-radius: 10px; padding: 32px;
+      text-align: center; cursor: pointer; transition: all 0.2s;
+      background: #0f172a;
+    }
+    .csv-dropzone:hover, .csv-dropzone.drag-over { border-color: #6366f1; background: #1e1f3b; }
+    .csv-dropzone p { color: #64748b; font-size: 13px; margin: 8px 0 0; }
+    .csv-dropzone .icon { font-size: 32px; margin-bottom: 8px; }
+    .csv-preview-table { width: 100%; border-collapse: collapse; font-size: 12px; max-height: 200px; overflow-y: auto; display: block; margin-top: 16px; }
+    .csv-preview-table th { background: #1e293b; color: #94a3b8; padding: 6px 10px; text-align: left; position: sticky; top: 0; }
+    .csv-preview-table td { padding: 5px 10px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+    .csv-col-map { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .csv-col-map label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block; }
+    .csv-col-map select { width: 100%; padding: 7px 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f1f5f9; font-size: 12px; }
 
     /* Settings */
     .settings-form { max-width: 480px; }
@@ -183,6 +223,7 @@
         <!-- Tabs -->
         <div class="tab-bar" id="tabBar">
           <button class="tab-btn active" data-tab="datasets" onclick="switchTab('datasets')">Datasets</button>
+          <button class="tab-btn" data-tab="client-view" onclick="switchTab('client-view')">Client View</button>
           <button class="tab-btn" data-tab="members" onclick="switchTab('members')" id="membersTabBtn">Members</button>
           <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')" id="settingsTabBtn">Settings</button>
         </div>
@@ -195,6 +236,16 @@
           </div>
           <div class="dataset-grid" id="datasetGrid"></div>
           <div id="datasetEmpty" style="color:#475569;font-size:14px;display:none;padding:20px 0;">No datasets yet. Add one to get started.</div>
+        </div>
+
+        <!-- Client View tab -->
+        <div class="tab-panel" id="tab-client-view">
+          <div class="client-preview">
+            <div class="preview-label">Client View — what your client sees</div>
+            <div id="clientViewInner">
+              <div class="preview-empty">No datasets yet — add a dataset to see the client view.</div>
+            </div>
+          </div>
         </div>
 
         <!-- Members tab -->
@@ -366,7 +417,60 @@
     </div>
   </div>
 
+  <!-- CSV Upload Modal -->
+  <div class="modal-backdrop hidden" id="csvModal">
+    <div class="modal" style="max-width:600px;">
+      <h2>Upload CSV Data</h2>
+      <p id="csvModalSubtitle">Select a CSV file to import data into this dataset.</p>
+      <div class="alert alert-err" id="csvErr"></div>
+      <div class="alert alert-ok" id="csvOk"></div>
+
+      <div id="csvStep1">
+        <div class="csv-dropzone" id="csvDropzone" onclick="document.getElementById('csvFileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleCsvDrop(event)">
+          <div class="icon">📂</div>
+          <strong style="color:#f1f5f9;">Click to upload or drag & drop</strong>
+          <p>Supports CSV files from Instagram, Facebook, TikTok, Google Ads and more</p>
+        </div>
+        <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none;" onchange="handleCsvFile(event)" />
+      </div>
+
+      <div id="csvStep2" style="display:none;">
+        <p style="font-size:12px;color:#64748b;margin-bottom:8px;" id="csvFileInfo"></p>
+
+        <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">Column Mapping — tell us which columns to use:</div>
+        <div class="csv-col-map" id="csvColMap"></div>
+
+        <div style="font-size:12px;color:#94a3b8;margin:14px 0 6px;">Preview (first 5 rows):</div>
+        <div style="overflow-x:auto;max-height:180px;overflow-y:auto;">
+          <table class="csv-preview-table" id="csvPreviewTable"></table>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="csvReset()" type="button" id="csvBackBtn" style="display:none;">← Back</button>
+        <button class="btn-ghost" onclick="closeModal('csvModal')" type="button">Cancel</button>
+        <button class="btn-primary" id="csvImportBtn" onclick="importCsv()" type="button" style="display:none;">Import Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Dataset confirmation -->
+  <div class="modal-backdrop hidden" id="deleteDatasetModal">
+    <div class="modal">
+      <h2>Delete Dataset?</h2>
+      <p>This will permanently remove this dataset and all its data. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('deleteDatasetModal')" type="button">Cancel</button>
+        <button class="btn-danger" onclick="confirmDeleteDataset()" type="button">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
   <script defer src="logo-animation.js"></script>
+  <script src="orbit-chart.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

@@ -149,38 +149,53 @@ function switchTab(name) {
   });
   if (name === 'datasets') loadDatasets();
   if (name === 'members') loadMembers();
+  if (name === 'client-view') loadClientView();
 }
 
 // ── Datasets ──────────────────────────────────────────────────────────────────
+let allDatasets = [];
+let pendingDeleteDatasetId = null;
+let clientViewChart = null;
+let clientViewDatasetId = null;
+
 async function loadDatasets() {
   if (!currentDash) return;
   const res = await authFetch(`/api/datasets?dashboardId=${currentDash.id}`);
   if (!res.ok) return;
-  const datasets = await res.json();
+  allDatasets = await res.json();
+  renderDatasetGrid();
+}
+
+function renderDatasetGrid() {
   const grid = document.getElementById('datasetGrid');
   const empty = document.getElementById('datasetEmpty');
+  const canEdit = currentUser.role === 'super_admin' || currentDash.accessLevel === 'admin';
 
-  if (!datasets.length) {
+  if (!allDatasets.length) {
     grid.innerHTML = '';
     empty.style.display = 'block';
     return;
   }
   empty.style.display = 'none';
-  grid.innerHTML = datasets.map(d => `
-    <div class="dataset-card" onclick="viewDataset('${d.id}')">
+
+  grid.innerHTML = allDatasets.map(d => {
+    const hasData = d.dailyPoints && d.dailyPoints.length > 0;
+    return `
+    <div class="dataset-card">
       <div class="platform-tag">${esc(d.platform)}</div>
       <h3>${esc(d.title)}</h3>
       <div class="meta">${esc(d.periodLabel)}</div>
-    </div>
-  `).join('');
-}
-
-function viewDataset(id) {
-  window.location.href = `/report.html?datasetId=${id}&dashboardId=${currentDash.id}`;
+      ${hasData ? `<div class="meta" style="color:#22c55e;margin-top:4px;">✓ ${d.dailyPoints.length} data rows</div>` : `<div class="meta" style="color:#475569;margin-top:4px;">No data yet</div>`}
+      ${canEdit ? `
+      <div class="dataset-card-actions">
+        <button class="btn-xs btn-xs-primary" onclick="openCsvUpload('${d.id}','${esc(d.title)}')">Upload CSV</button>
+        <button class="btn-xs btn-xs-danger" onclick="askDeleteDataset('${d.id}')">Delete</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function openAddDataset() {
-  // Reset form
   document.getElementById('dsTitle').value = '';
   document.getElementById('dsPlatform').value = 'Instagram';
   document.getElementById('dsPeriodLabel').value = '';
@@ -212,7 +227,6 @@ async function createDataset() {
     body: JSON.stringify({ title, platform, periodLabel, periodStart, periodEnd, notes })
   });
   const data = await res.json();
-
   btn.disabled = false; btn.textContent = 'Create Dataset';
 
   if (!res.ok) {
@@ -222,8 +236,329 @@ async function createDataset() {
   }
 
   closeModal('newDatasetModal');
-  // Redirect to the report page to fill in metrics
-  window.location.href = `/report.html?datasetId=${data.id}&dashboardId=${currentDash.id}`;
+  await loadDatasets();
+}
+
+function askDeleteDataset(id) {
+  pendingDeleteDatasetId = id;
+  openModal('deleteDatasetModal');
+}
+
+async function confirmDeleteDataset() {
+  if (!pendingDeleteDatasetId) return;
+  await authFetch(`/api/datasets/${pendingDeleteDatasetId}`, { method: 'DELETE' });
+  closeModal('deleteDatasetModal');
+  pendingDeleteDatasetId = null;
+  await loadDatasets();
+}
+
+// ── CSV Upload ────────────────────────────────────────────────────────────────
+let csvDatasetId = null;
+let csvParsed = null; // { headers, rows }
+
+function openCsvUpload(datasetId, title) {
+  csvDatasetId = datasetId;
+  csvParsed = null;
+  document.getElementById('csvModalSubtitle').textContent = `Import data into: ${title}`;
+  document.getElementById('csvErr').style.display = 'none';
+  document.getElementById('csvOk').style.display = 'none';
+  csvReset();
+  openModal('csvModal');
+}
+
+function csvReset() {
+  document.getElementById('csvStep1').style.display = 'block';
+  document.getElementById('csvStep2').style.display = 'none';
+  document.getElementById('csvImportBtn').style.display = 'none';
+  document.getElementById('csvBackBtn').style.display = 'none';
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('csvErr').style.display = 'none';
+  document.getElementById('csvOk').style.display = 'none';
+  csvParsed = null;
+}
+
+function handleCsvDrop(event) {
+  event.preventDefault();
+  document.getElementById('csvDropzone').classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file) processCSVFile(file);
+}
+
+function handleCsvFile(event) {
+  const file = event.target.files[0];
+  if (file) processCSVFile(file);
+}
+
+function processCSVFile(file) {
+  if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
+    const errEl = document.getElementById('csvErr');
+    errEl.textContent = 'Please upload a CSV file.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      csvParsed = parseCSV(e.target.result);
+      if (!csvParsed.headers.length || !csvParsed.rows.length) throw new Error('No data found in file.');
+      showCsvStep2(file.name, csvParsed);
+    } catch (err) {
+      const errEl = document.getElementById('csvErr');
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  // Handle both \r\n and \n line endings, remove BOM
+  text = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (!lines.length) return { headers: [], rows: [] };
+
+  function parseLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  const headers = parseLine(lines[0]);
+  const rows = lines.slice(1).map(l => {
+    const vals = parseLine(l);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v.trim()));
+
+  return { headers, rows };
+}
+
+function showCsvStep2(filename, parsed) {
+  document.getElementById('csvStep1').style.display = 'none';
+  document.getElementById('csvStep2').style.display = 'block';
+  document.getElementById('csvImportBtn').style.display = 'inline-block';
+  document.getElementById('csvBackBtn').style.display = 'inline-block';
+  document.getElementById('csvFileInfo').textContent = `${filename} — ${parsed.rows.length} rows, ${parsed.headers.length} columns`;
+
+  // Build column mapping UI
+  const dateOptions = parsed.headers.map((h, i) =>
+    `<option value="${i}" ${/date|day|week|month|period/i.test(h) ? 'selected' : ''}>${esc(h)}</option>`
+  ).join('');
+
+  const metricOptions = ['(skip)', ...parsed.headers].map((h, i) =>
+    `<option value="${i - 1}">${esc(h)}</option>`
+  ).join('');
+
+  const commonMetrics = ['impressions', 'reach', 'views', 'clicks', 'interactions', 'reactions', 'comments', 'follows', 'engagement'];
+
+  let mapHtml = `<div style="grid-column:1/-1;font-size:11px;color:#475569;margin-bottom:4px;">Date column (required):</div>
+    <div style="grid-column:1/-1;"><select id="csvDateCol" style="width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:12px;">${dateOptions}</select></div>
+    <div style="grid-column:1/-1;font-size:11px;color:#475569;margin:10px 0 4px;">Metric columns — map to known metrics (optional, auto-detected):</div>`;
+
+  parsed.headers.forEach((h, i) => {
+    const guess = commonMetrics.find(m => h.toLowerCase().includes(m)) || '';
+    mapHtml += `<div>
+      <label style="font-size:11px;color:#64748b;">${esc(h)}</label>
+      <select class="csv-metric-map" data-col="${i}" style="width:100%;padding:6px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:11px;margin-top:3px;">
+        <option value="">(auto)</option>
+        ${commonMetrics.map(m => `<option value="${m}" ${guess===m?'selected':''}>${m}</option>`).join('')}
+        <option value="skip">skip</option>
+      </select>
+    </div>`;
+  });
+
+  document.getElementById('csvColMap').innerHTML = mapHtml;
+
+  // Preview table
+  const preview = parsed.rows.slice(0, 5);
+  const thead = `<tr>${parsed.headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr>`;
+  const tbody = preview.map(r => `<tr>${parsed.headers.map(h => `<td>${esc(r[h] || '')}</td>`).join('')}</tr>`).join('');
+  document.getElementById('csvPreviewTable').innerHTML = `<thead>${thead}</thead><tbody>${tbody}</tbody>`;
+}
+
+async function importCsv() {
+  if (!csvParsed || !csvDatasetId) return;
+
+  const dateColIdx = parseInt(document.getElementById('csvDateCol').value);
+  const dateKey = csvParsed.headers[dateColIdx];
+
+  // Build metric key mappings
+  const metricMaps = {};
+  document.querySelectorAll('.csv-metric-map').forEach(sel => {
+    const colIdx = parseInt(sel.dataset.col);
+    const colName = csvParsed.headers[colIdx];
+    const mapTo = sel.value;
+    if (mapTo && mapTo !== 'skip' && colIdx !== dateColIdx) {
+      metricMaps[colName] = mapTo || colName.toLowerCase().replace(/\s+/g, '_');
+    } else if (!mapTo && colIdx !== dateColIdx) {
+      // Auto: use column name as metric key
+      metricMaps[colName] = colName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    }
+  });
+
+  // Build daily_points
+  const dailyPoints = csvParsed.rows.map(row => {
+    const point = { date: row[dateKey] || '' };
+    Object.keys(metricMaps).forEach(col => {
+      const val = parseFloat(String(row[col] || '').replace(/[^0-9.-]/g, ''));
+      point[metricMaps[col]] = isNaN(val) ? 0 : val;
+    });
+    return point;
+  }).filter(p => p.date);
+
+  // Aggregate totals for metrics_json
+  const metricKeys = [...new Set(Object.values(metricMaps))];
+  const metrics = {};
+  metricKeys.forEach(k => {
+    metrics[k] = dailyPoints.reduce((sum, p) => sum + (p[k] || 0), 0);
+  });
+
+  const btn = document.getElementById('csvImportBtn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+
+  const res = await authFetch(`/api/datasets/${csvDatasetId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ dailyPoints, metrics })
+  });
+
+  btn.disabled = false; btn.textContent = 'Import Data';
+
+  if (!res.ok) {
+    const d = await res.json();
+    document.getElementById('csvErr').textContent = d.error || 'Import failed.';
+    document.getElementById('csvErr').style.display = 'block';
+    return;
+  }
+
+  const okEl = document.getElementById('csvOk');
+  okEl.textContent = `✓ Imported ${dailyPoints.length} rows of data successfully!`;
+  okEl.style.display = 'block';
+
+  await loadDatasets();
+  setTimeout(() => { closeModal('csvModal'); csvReset(); }, 1800);
+}
+
+// ── Client View Tab ───────────────────────────────────────────────────────────
+async function loadClientView() {
+  if (!currentDash) return;
+  const res = await authFetch(`/api/datasets?dashboardId=${currentDash.id}`);
+  if (!res.ok) return;
+  const datasets = await res.json();
+  const container = document.getElementById('clientViewInner');
+
+  if (!datasets.length) {
+    container.innerHTML = '<div class="preview-empty">No datasets yet — add a dataset to see the client view.</div>';
+    return;
+  }
+
+  // Set default selected dataset
+  if (!clientViewDatasetId || !datasets.find(d => d.id === clientViewDatasetId)) {
+    clientViewDatasetId = datasets[0].id;
+  }
+
+  // Platform selector pills
+  const pillsHtml = datasets.map(d =>
+    `<button class="platform-pill ${d.id === clientViewDatasetId ? 'active' : ''}"
+      onclick="selectClientDataset('${d.id}')">${esc(d.platform)} — ${esc(d.periodLabel)}</button>`
+  ).join('');
+
+  const ds = datasets.find(d => d.id === clientViewDatasetId) || datasets[0];
+  const metrics = ds.metrics || {};
+  const dailyPoints = ds.dailyPoints || [];
+  const metricKeys = Object.keys(metrics).filter(k => metrics[k] > 0);
+
+  // Metric cards
+  const metricCardsHtml = metricKeys.length
+    ? metricKeys.map(k => `
+      <div class="metric-preview-card">
+        <div class="m-label">${k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ')}</div>
+        <div class="m-value">${shortNum(metrics[k])}</div>
+      </div>`).join('')
+    : `<div style="color:#475569;font-size:13px;padding:12px 0;">No metrics yet — upload a CSV to populate data.</div>`;
+
+  // Feedback
+  const feedbackHtml = ds.aiFeedbackText
+    ? `<div style="color:#cbd5e1;font-size:13px;line-height:1.6;white-space:pre-wrap;">${esc(ds.aiFeedbackText)}</div>`
+    : `<div style="color:#334155;font-size:13px;">No feedback written yet.</div>`;
+
+  container.innerHTML = `
+    <div class="platform-pill-row">${pillsHtml}</div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.06em;">
+      ${esc(ds.title)} &nbsp;·&nbsp; ${esc(ds.periodLabel)}
+    </div>
+
+    <div class="metric-preview-grid">${metricCardsHtml}</div>
+
+    ${dailyPoints.length ? `
+    <div class="chart-preview-wrap">
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Performance Over Time</div>
+      <div style="position:relative;height:200px;">
+        <canvas id="clientViewCanvas" style="width:100%;height:200px;"></canvas>
+        <div id="clientViewTooltip" class="chart-tooltip"></div>
+      </div>
+    </div>` : `
+    <div class="chart-preview-wrap" style="text-align:center;color:#334155;font-size:13px;padding:40px;">
+      Upload a CSV to see the performance chart.
+    </div>`}
+
+    <div style="font-size:13px;color:#94a3b8;font-weight:500;margin-bottom:8px;">Feedback</div>
+    <div class="feedback-preview">${feedbackHtml}</div>
+  `;
+
+  // Render chart if data exists
+  if (dailyPoints.length && metricKeys.length) {
+    setTimeout(() => renderClientViewChart(dailyPoints, metricKeys), 50);
+  }
+}
+
+function selectClientDataset(id) {
+  clientViewDatasetId = id;
+  loadClientView();
+}
+
+function renderClientViewChart(dailyPoints, metricKeys) {
+  const canvas = document.getElementById('clientViewCanvas');
+  if (!canvas) return;
+  if (clientViewChart) { clientViewChart = null; }
+
+  const tooltip = document.getElementById('clientViewTooltip');
+  clientViewChart = new OrbitChart(canvas, tooltip);
+
+  const labels = dailyPoints.map(p => p.date);
+  const chartKeys = metricKeys.slice(0, 3); // max 3 lines
+  const chartDatasets = chartKeys.map(k => ({
+    key: k,
+    label: k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' '),
+    data: dailyPoints.map(p => p[k] || 0)
+  }));
+
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(300, Math.floor(rect.width * window.devicePixelRatio || 600));
+  canvas.height = Math.max(200, 200 * window.devicePixelRatio || 200);
+  clientViewChart.setData(labels, chartDatasets);
+}
+
+function shortNum(n) {
+  n = Number(n) || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toLocaleString();
 }
 
 // ── Members ───────────────────────────────────────────────────────────────────
