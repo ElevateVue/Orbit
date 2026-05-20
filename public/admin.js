@@ -556,7 +556,7 @@ function renderClientViewChart(dailyPoints, metricKeys) {
   const chartDatasets = chartKeys.map(k => ({
     key: k,
     label: k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' '),
-    data: dailyPoints.map(p => Number(p[k]) || 0)
+    values: dailyPoints.map(p => Number(p[k]) || 0)  // OrbitChart uses .values not .data
   }));
 
   clientViewChart.setData(labels, chartDatasets);
