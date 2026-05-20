@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accept Invite — Orbit</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: #6366f1; }
+    h2 {
+      color: #f1f5f9;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #6366f1; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #4f46e5; }
+    .btn:disabled { background: #334155; cursor: not-allowed; }
+    .error {
+      background: #7f1d1d22;
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .success {
+      background: #14532d22;
+      border: 1px solid #22c55e;
+      color: #86efac;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .temp-pw-note {
+      background: #1e3a5f;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+    .temp-pw-note strong { color: #bfdbfe; }
+    #loading-state {
+      text-align: center;
+      color: #94a3b8;
+      padding: 20px 0;
+    }
+    #form-state { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Or<span>bit</span></div>
+
+    <div id="loading-state">
+      <p>Loading your invite…</p>
+    </div>
+
+    <div id="error-state" style="display:none;">
+      <h2>Invalid Invite</h2>
+      <p class="subtitle">This invite link is invalid or has already been used.</p>
+    </div>
+
+    <div id="form-state">
+      <h2 id="form-title">Accept Your Invite</h2>
+      <p class="subtitle" id="form-subtitle">Set up your account to get started.</p>
+
+      <div id="temp-pw-notice" class="temp-pw-note" style="display:none;">
+        Your temporary password is: <strong id="temp-pw-display"></strong>
+      </div>
+
+      <div class="error" id="err-msg"></div>
+      <div class="success" id="ok-msg"></div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" id="firstName" placeholder="Jane" autocomplete="given-name" />
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" id="lastName" placeholder="Smith" autocomplete="family-name" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Create a password" autocomplete="new-password" />
+      </div>
+
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Confirm your password" autocomplete="new-password" />
+      </div>
+
+      <button class="btn" id="acceptBtn" onclick="acceptInvite()">Create Account &amp; Sign In</button>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+
+    if (!token) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+    } else {
+      // Verify token is valid by trying to peek at the invite
+      // We don't expose a separate check endpoint — just show the form if token is present
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('form-state').style.display = 'block';
+    }
+
+    function showErr(msg) {
+      const el = document.getElementById('err-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+      document.getElementById('ok-msg').style.display = 'none';
+    }
+
+    async function acceptInvite() {
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      document.getElementById('err-msg').style.display = 'none';
+
+      if (!firstName || !lastName || !password) return showErr('All fields are required.');
+      if (password.length < 8) return showErr('Password must be at least 8 characters.');
+      if (password !== confirmPassword) return showErr('Passwords do not match.');
+
+      const btn = document.getElementById('acceptBtn');
+      btn.disabled = true;
+      btn.textContent = 'Setting up…';
+
+      try {
+        const resp = await fetch('/api/auth/accept-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, firstName, lastName, password })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          btn.disabled = false;
+          btn.textContent = 'Create Account & Sign In';
+          return showErr(data.error || 'Something went wrong.');
+        }
+
+        // Save session
+        localStorage.setItem('orbit_token', data.token);
+        localStorage.setItem('orbit_user', JSON.stringify(data.user));
+
+        const okEl = document.getElementById('ok-msg');
+        okEl.textContent = 'Account created! Redirecting…';
+        okEl.style.display = 'block';
+
+        setTimeout(() => {
+          const role = data.user.role;
+          if (role === 'super_admin' || role === 'admin') {
+            window.location.href = '/admin.html';
+          } else {
+            window.location.href = '/dashboard.html';
+          }
+        }, 1200);
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Create Account & Sign In';
+        showErr('Network error. Please try again.');
+      }
+    }
+
+    // Allow Enter key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') acceptInvite();
+    });
+  </script>
+</body>
+</html>

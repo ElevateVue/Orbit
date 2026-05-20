@@ -46,3 +46,5 @@ server.err.log
 .temp/
 temp/
 .vercel
+
+.vercel

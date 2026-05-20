@@ -3,88 +3,318 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin View - Orbit</title>
+  <title>Admin — Orbit</title>
   <link rel="stylesheet" href="style.css" />
-  <script defer src="auth.js"></script>
-  <script defer src="logo-animation.js"></script>
-  <script defer src="orbit-chart.js"></script>
-  <script defer src="admin.js"></script>
+  <style>
+    /* ── Admin-specific overrides ── */
+    .admin-layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 60px); }
+    .sidebar { background: #0f172a; border-right: 1px solid #1e293b; padding: 20px 0; overflow-y: auto; }
+    .sidebar-section { padding: 0 16px; margin-bottom: 8px; }
+    .sidebar-label { font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 8px 4px; }
+    .dash-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      transition: background 0.15s; margin-bottom: 2px;
+    }
+    .dash-item:hover { background: #1e293b; }
+    .dash-item.active { background: #1e293b; border: 1px solid #334155; }
+    .dash-logo {
+      width: 32px; height: 32px; border-radius: 6px;
+      background: #1e293b; object-fit: contain; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #94a3b8;
+    }
+    .dash-logo img { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; }
+    .dash-name { font-size: 13px; color: #e2e8f0; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .new-dash-btn {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 10px 12px; border-radius: 8px;
+      background: none; border: 1px dashed #334155;
+      color: #6366f1; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; margin-top: 8px;
+    }
+    .new-dash-btn:hover { background: #1e293b; border-color: #6366f1; }
+
+    /* Main content */
+    .admin-main { background: #0f172a; padding: 32px; overflow-y: auto; }
+    .admin-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 60vh; text-align: center; color: #475569;
+    }
+    .admin-empty h2 { font-size: 20px; color: #94a3b8; margin-bottom: 8px; }
+
+    /* Dashboard header */
+    .dash-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+    .dash-header-logo { width: 56px; height: 56px; border-radius: 10px; background: #1e293b; display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 22px; font-weight: 700; color: #94a3b8; }
+    .dash-header-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .dash-header-info { flex: 1; }
+    .dash-header-info h1 { font-size: 22px; color: #f1f5f9; font-weight: 700; }
+    .dash-header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* Tabs */
+    .tab-bar { display: flex; gap: 2px; border-bottom: 1px solid #1e293b; margin-bottom: 24px; }
+    .tab-btn {
+      padding: 10px 16px; background: none; border: none;
+      color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px;
+    }
+    .tab-btn.active { color: #6366f1; border-bottom-color: #6366f1; }
+    .tab-btn:hover:not(.active) { color: #94a3b8; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Members table */
+    .members-table { width: 100%; border-collapse: collapse; }
+    .members-table th { text-align: left; font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+    .members-table td { padding: 12px; border-bottom: 1px solid #1e293b; font-size: 13px; color: #cbd5e1; }
+    .members-table tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-admin { background: #312e81; color: #a5b4fc; }
+    .badge-client { background: #164e63; color: #67e8f9; }
+    .badge-pending { background: #292524; color: #a8a29e; }
+    .icon-btn { background: none; border: none; color: #64748b; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 15px; }
+    .icon-btn:hover { color: #ef4444; background: #1e293b; }
+
+    /* Invite form */
+    .invite-form { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 20px; max-width: 480px; }
+    .invite-form h3 { font-size: 15px; color: #f1f5f9; margin-bottom: 16px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; color: #94a3b8; font-weight: 500; margin-bottom: 5px; }
+    .field input, .field select {
+      width: 100%; padding: 9px 12px;
+      background: #0f172a; border: 1px solid #334155;
+      border-radius: 7px; color: #f1f5f9; font-size: 13px; outline: none;
+    }
+    .field input:focus, .field select:focus { border-color: #6366f1; }
+    .field select option { background: #1e293b; }
+
+    /* Dataset list */
+    .dataset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    .dataset-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 16px; cursor: pointer; transition: border-color 0.15s;
+    }
+    .dataset-card:hover { border-color: #6366f1; }
+    .dataset-card h3 { font-size: 14px; color: #f1f5f9; font-weight: 600; margin-bottom: 4px; }
+    .dataset-card .meta { font-size: 12px; color: #64748b; }
+    .dataset-card .platform-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #1e3a5f; color: #60a5fa; margin-bottom: 8px; }
+
+    /* Settings */
+    .settings-form { max-width: 480px; }
+    .logo-upload-area {
+      width: 80px; height: 80px; border-radius: 12px;
+      border: 2px dashed #334155; background: #0f172a;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden; margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .logo-upload-area:hover { border-color: #6366f1; }
+    .logo-upload-area img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-upload-area span { color: #475569; font-size: 11px; text-align: center; padding: 4px; }
+
+    /* Modals */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal-backdrop.hidden { display: none; }
+    .modal { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 28px; width: 100%; max-width: 440px; }
+    .modal h2 { font-size: 18px; color: #f1f5f9; margin-bottom: 4px; }
+    .modal p { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* Alerts */
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
+    .alert-err { background: rgba(127,29,29,0.3); border: 1px solid #ef4444; color: #fca5a5; }
+    .alert-ok { background: rgba(20,83,45,0.3); border: 1px solid #22c55e; color: #86efac; }
+
+    /* Buttons */
+    .btn-primary { padding: 9px 18px; background: #6366f1; color: #fff; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-primary:disabled { background: #334155; cursor: not-allowed; }
+    .btn-ghost { padding: 9px 18px; background: none; color: #94a3b8; border: 1px solid #334155; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-ghost:hover { border-color: #6366f1; color: #a5b4fc; }
+    .btn-danger { padding: 9px 18px; background: none; color: #f87171; border: 1px solid #ef4444; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .btn-danger:hover { background: #7f1d1d22; }
+  </style>
 </head>
 <body class="orbit-shell">
   <header class="topbar">
     <div class="brand-wrap">
-      <a class="brand-link" href="signin.html">
-        <div class="brand-logo"><canvas data-orbit-logo data-size="40" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas></div>
-        <div class="brand-text">Orbit <span>Admin View</span></div>
+      <a class="brand-link" href="admin.html">
+        <canvas data-orbit-logo data-size="32" class="orbit-logo-canvas" aria-label="Orbit logo"></canvas>
+        <div class="brand-text">Orbit <span id="roleLabel">Admin</span></div>
       </a>
     </div>
     <div class="topbar-actions">
-      <button class="avatar-btn" id="adminSignoutBtn" type="button">A</button>
+      <span id="userNameDisplay" style="color:#64748b;font-size:13px;margin-right:12px;"></span>
+      <button class="ghost-btn small" id="signoutBtn" type="button">Sign Out</button>
     </div>
   </header>
 
-  <main class="page-shell">
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h1 id="adminName">Ashwin Admin</h1>
-          <p id="adminMeta">Upload, edit, and publish client dashboards</p>
-        </div>
-        <div class="panel-actions">
-          <div class="inline-status" id="adminClientCount">0 client accounts</div>
-          <button class="ghost-btn small" id="openAddUserBtn" type="button">Add User</button>
-        </div>
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Dashboards</div>
+        <ul id="sidebarDashList" style="list-style:none;padding:0;margin:0;"></ul>
+        <button class="new-dash-btn" id="newDashBtn" style="display:none;" type="button">
+          + New Dashboard
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="admin-main" id="adminMain">
+      <div class="admin-empty" id="emptyState">
+        <h2>No dashboard selected</h2>
+        <p>Select a dashboard from the sidebar or create a new one.</p>
+        <button class="btn-primary" id="emptyNewDashBtn" style="margin-top:20px;display:none;" type="button">Create Your First Dashboard</button>
       </div>
 
-      <section class="split-panels admin-console">
-        <article class="sub-panel">
-          <div class="sub-panel-head">
-            <div>
-              <h2>Client Accounts</h2>
-              <p>Select a client to manage the dashboard content they will see.</p>
+      <div id="dashContent" style="display:none;">
+        <!-- Dashboard header -->
+        <div class="dash-header">
+          <div class="dash-header-logo" id="dashLogoDisplay"></div>
+          <div class="dash-header-info">
+            <h1 id="dashNameDisplay"></h1>
+            <span id="dashRoleBadge" class="badge badge-admin"></span>
+          </div>
+          <div class="dash-header-actions" id="dashHeaderActions"></div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tab-bar" id="tabBar">
+          <button class="tab-btn active" data-tab="datasets" onclick="switchTab('datasets')">Datasets</button>
+          <button class="tab-btn" data-tab="members" onclick="switchTab('members')" id="membersTabBtn">Members</button>
+          <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')" id="settingsTabBtn">Settings</button>
+        </div>
+
+        <!-- Datasets tab -->
+        <div class="tab-panel active" id="tab-datasets">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="font-size:16px;color:#f1f5f9;">Datasets</h2>
+            <button class="btn-primary" id="addDatasetBtn" onclick="openAddDataset()" type="button">+ Add Dataset</button>
+          </div>
+          <div class="dataset-grid" id="datasetGrid"></div>
+          <div id="datasetEmpty" style="color:#475569;font-size:14px;display:none;padding:20px 0;">No datasets yet. Add one to get started.</div>
+        </div>
+
+        <!-- Members tab -->
+        <div class="tab-panel" id="tab-members">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="font-size:16px;color:#f1f5f9;">Members</h2>
+            <button class="btn-primary" id="inviteBtn" onclick="openInviteModal()" type="button">Invite User</button>
+          </div>
+          <table class="members-table" id="membersTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Access</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="membersTbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Settings tab -->
+        <div class="tab-panel" id="tab-settings">
+          <div class="settings-form">
+            <h2 style="font-size:16px;color:#f1f5f9;margin-bottom:20px;">Dashboard Settings</h2>
+            <div class="alert alert-err" id="settingsErr"></div>
+            <div class="alert alert-ok" id="settingsOk"></div>
+
+            <div style="margin-bottom:16px;">
+              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:500;margin-bottom:8px;">Client Logo</label>
+              <div class="logo-upload-area" id="logoUploadArea" onclick="document.getElementById('logoFileInput').click()">
+                <span>Click to upload</span>
+              </div>
+              <input type="file" id="logoFileInput" accept="image/*" style="display:none;" onchange="handleLogoFile(event)" />
+            </div>
+
+            <div class="field">
+              <label>Dashboard Name</label>
+              <input type="text" id="settingsName" placeholder="Client dashboard name" />
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:4px;">
+              <button class="btn-primary" onclick="saveDashboardSettings()" type="button">Save Changes</button>
+              <button class="btn-danger" onclick="confirmDeleteDashboard()" type="button" id="deleteDashBtn" style="display:none;">Delete Dashboard</button>
             </div>
           </div>
-          <ul class="saved-list admin-list admin-client-list" id="clientsList"></ul>
-        </article>
-
-        <article class="sub-panel admin-detail-panel" id="adminClientDetail">
-          <div class="admin-placeholder">
-            <h2>Select a client</h2>
-            <p>Choose a name from the left to upload or edit the dashboard you want to share.</p>
-          </div>
-        </article>
-      </section>
-    </section>
-  </main>
-
-  <div class="modal-backdrop hidden" id="addUserModal">
-    <div class="report-modal">
-      <div class="modal-head">
-        <div>
-          <h2>Add Client User</h2>
-          <p>Create a client entry first. They can then finish signup using the same email.</p>
         </div>
-        <button class="close-btn" id="closeAddUserBtn" type="button">x</button>
       </div>
-      <div class="modal-form">
-        <div class="field-grid">
-          <label class="field">
-            <span>First Name</span>
-            <input id="newClientFirstName" type="text" />
-          </label>
-          <label class="field">
-            <span>Last Name</span>
-            <input id="newClientLastName" type="text" />
-          </label>
+    </main>
+  </div>
+
+  <!-- New Dashboard Modal -->
+  <div class="modal-backdrop hidden" id="newDashModal">
+    <div class="modal">
+      <h2>New Dashboard</h2>
+      <p>Create a new client dashboard.</p>
+      <div class="alert alert-err" id="newDashErr"></div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;color:#94a3b8;font-weight:500;margin-bottom:8px;">Client Logo (optional)</label>
+        <div class="logo-upload-area" id="newDashLogoArea" onclick="document.getElementById('newDashLogoFile').click()">
+          <span>Click to upload</span>
         </div>
-        <label class="field">
-          <span>Email</span>
-          <input id="newClientEmail" type="email" />
-        </label>
-        <div class="inline-status" id="addUserStatus"></div>
-        <button class="primary-btn wide" id="submitAddUserBtn" type="button">Create Client User</button>
+        <input type="file" id="newDashLogoFile" accept="image/*" style="display:none;" onchange="handleNewDashLogo(event)" />
+      </div>
+
+      <div class="field">
+        <label>Dashboard Name</label>
+        <input type="text" id="newDashName" placeholder="e.g. Acme Corp" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('newDashModal')" type="button">Cancel</button>
+        <button class="btn-primary" id="createDashBtn" onclick="createDashboard()" type="button">Create Dashboard</button>
       </div>
     </div>
   </div>
+
+  <!-- Invite Modal -->
+  <div class="modal-backdrop hidden" id="inviteModal">
+    <div class="modal">
+      <h2>Invite User</h2>
+      <p>They'll receive an email with a link to set up their account.</p>
+      <div class="alert alert-err" id="inviteErr"></div>
+      <div class="alert alert-ok" id="inviteOk"></div>
+
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="inviteEmail" placeholder="user@example.com" />
+      </div>
+
+      <div class="field">
+        <label>Access Level</label>
+        <select id="inviteRole">
+          <option value="client">Client — View only</option>
+          <option value="admin">Admin — Can manage data</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('inviteModal')" type="button">Cancel</button>
+        <button class="btn-primary" id="sendInviteBtn" onclick="sendInvite()" type="button">Send Invite</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="modal-backdrop hidden" id="deleteModal">
+    <div class="modal">
+      <h2>Delete Dashboard?</h2>
+      <p>This will permanently delete the dashboard, all datasets, members, and invites. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('deleteModal')" type="button">Cancel</button>
+        <button class="btn-danger" onclick="deleteDashboard()" type="button">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="logo-animation.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>

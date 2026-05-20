@@ -1,19 +1,24 @@
-const STORAGE_KEY = 'orbitSession';
+// ── Orbit Auth helpers ───────────────────────────────────────────────────────
 
 function saveSession(session) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  localStorage.setItem('orbit_token', session.token);
+  localStorage.setItem('orbit_user', JSON.stringify(session.user));
 }
 
 function readSession() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-  } catch (error) {
+    const token = localStorage.getItem('orbit_token');
+    const user = JSON.parse(localStorage.getItem('orbit_user') || 'null');
+    if (!token || !user) return null;
+    return { token, user };
+  } catch {
     return null;
   }
 }
 
 function clearSession() {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem('orbit_token');
+  localStorage.removeItem('orbit_user');
 }
 
 async function requestJson(url, options = {}) {
@@ -29,8 +34,8 @@ async function requestJson(url, options = {}) {
   if (raw) {
     try {
       data = JSON.parse(raw);
-    } catch (error) {
-      throw new Error('The server returned an invalid response. Please restart it and try again.');
+    } catch {
+      throw new Error('The server returned an invalid response. Please try again.');
     }
   }
   if (!response.ok) {
@@ -65,22 +70,32 @@ async function signout() {
         method: 'POST',
         body: JSON.stringify({ token: session.token }),
       });
-    } catch (error) {
+    } catch {
       // keep local signout resilient
     }
   }
   clearSession();
 }
 
-function requireSession(role) {
+function roleHomePage(role) {
+  if (role === 'super_admin' || role === 'admin') return '/admin.html';
+  return '/dashboard.html';
+}
+
+function requireSession(allowedRoles) {
   const session = readSession();
   if (!session?.token || !session?.user) {
     window.location.href = '/signin.html';
     return null;
   }
-  if (role && session.user.role !== role) {
-    window.location.href = session.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
-    return null;
+  const role = session.user.role;
+  // If allowedRoles is a string, convert to array for uniform check
+  if (allowedRoles) {
+    const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+    if (!roles.includes(role)) {
+      window.location.href = roleHomePage(role);
+      return null;
+    }
   }
   return session;
 }
@@ -105,7 +120,6 @@ function initPasswordToggles() {
       const field = button.closest('.password-field');
       const input = field?.querySelector('input');
       if (!input) return;
-
       const showing = input.type === 'text';
       input.type = showing ? 'password' : 'text';
       button.textContent = showing ? '👁' : '🙈';
