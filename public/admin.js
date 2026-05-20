@@ -508,8 +508,8 @@ async function loadClientView() {
     ${dailyPoints.length ? `
     <div class="chart-preview-wrap">
       <div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Performance Over Time</div>
-      <div style="position:relative;height:200px;">
-        <canvas id="clientViewCanvas" style="width:100%;height:200px;"></canvas>
+      <div class="chart-canvas-wrap">
+        <canvas id="clientViewCanvas"></canvas>
         <div id="clientViewTooltip" class="chart-tooltip"></div>
       </div>
     </div>` : `
@@ -521,9 +521,9 @@ async function loadClientView() {
     <div class="feedback-preview">${feedbackHtml}</div>
   `;
 
-  // Render chart if data exists
+  // Render chart after DOM has painted
   if (dailyPoints.length && metricKeys.length) {
-    setTimeout(() => renderClientViewChart(dailyPoints, metricKeys), 50);
+    requestAnimationFrame(() => setTimeout(() => renderClientViewChart(dailyPoints, metricKeys), 80));
   }
 }
 
@@ -535,23 +535,40 @@ function selectClientDataset(id) {
 function renderClientViewChart(dailyPoints, metricKeys) {
   const canvas = document.getElementById('clientViewCanvas');
   if (!canvas) return;
-  if (clientViewChart) { clientViewChart = null; }
+  clientViewChart = null;
 
   const tooltip = document.getElementById('clientViewTooltip');
+  const dpr = window.devicePixelRatio || 1;
+
+  // Size canvas to its container's actual pixel dimensions
+  const container = canvas.parentElement;
+  const w = container ? container.clientWidth || container.offsetWidth : 800;
+  const h = 220;
+  canvas.width = Math.max(400, Math.round(w * dpr));
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = '100%';
+  canvas.style.height = h + 'px';
+
   clientViewChart = new OrbitChart(canvas, tooltip);
 
   const labels = dailyPoints.map(p => p.date);
-  const chartKeys = metricKeys.slice(0, 3); // max 3 lines
+  const chartKeys = metricKeys.slice(0, 3);
   const chartDatasets = chartKeys.map(k => ({
     key: k,
     label: k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' '),
-    data: dailyPoints.map(p => p[k] || 0)
+    data: dailyPoints.map(p => Number(p[k]) || 0)
   }));
 
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = Math.max(300, Math.floor(rect.width * window.devicePixelRatio || 600));
-  canvas.height = Math.max(200, 200 * window.devicePixelRatio || 200);
   clientViewChart.setData(labels, chartDatasets);
+
+  // Re-render once layout is stable (handles flex/grid reflow delay)
+  requestAnimationFrame(() => {
+    const w2 = container ? container.clientWidth || container.offsetWidth : 800;
+    if (w2 !== w) {
+      canvas.width = Math.max(400, Math.round(w2 * dpr));
+      clientViewChart.render();
+    }
+  });
 }
 
 function shortNum(n) {
