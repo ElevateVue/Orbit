@@ -68,6 +68,10 @@ async function initDb() {
   await pool.query('ALTER TABLE users ALTER COLUMN company_name DROP NOT NULL').catch(() => {});
   await pool.query('ALTER TABLE users ALTER COLUMN dashboard_access_mode DROP NOT NULL').catch(() => {});
 
+  // ── Migrate old datasets table — drop legacy NOT NULL constraints ──
+  await pool.query('ALTER TABLE datasets ALTER COLUMN user_id DROP NOT NULL').catch(() => {});
+  await pool.query('ALTER TABLE datasets ALTER COLUMN client_id DROP NOT NULL').catch(() => {});
+
   // ── Migrate old datasets table — add any missing columns ──
   const datasetCols = [
     `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS dashboard_id TEXT NOT NULL DEFAULT ''`,
