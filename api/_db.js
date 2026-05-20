@@ -63,6 +63,17 @@ async function initDb() {
       updated_at TEXT NOT NULL
     );
   `);
+  // Handle old schema columns that may exist from a previous version
+  await pool.query(`
+    ALTER TABLE users ALTER COLUMN account_type DROP NOT NULL;
+  `).catch(() => {}); // Ignore if column doesn't exist
+  await pool.query(`
+    ALTER TABLE users ALTER COLUMN company_name DROP NOT NULL;
+  `).catch(() => {});
+  await pool.query(`
+    ALTER TABLE users ALTER COLUMN dashboard_access_mode DROP NOT NULL;
+  `).catch(() => {});
+
   ready = true;
 }
 
