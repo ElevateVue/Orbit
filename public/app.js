@@ -36,7 +36,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const chartLegend      = document.getElementById('chartLegend');
   const metricGrid       = document.getElementById('dashboardMetricGrid');
   const platformSelector = document.getElementById('platformSelector');
-  const aiFeedbackInput  = document.getElementById('aiFeedbackInput');
   const reportList       = document.getElementById('dashboardReportList');
 
   // ── Chart ─────────────────────────────────────────────────────────────────
@@ -124,8 +123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!ds) return;
 
     periodLabel.textContent = ds.periodLabel || ds.title;
-    aiFeedbackInput.value = ds.aiFeedbackText || '';
-
     renderMetrics(ds.metrics || {}, ds.platform);
     renderLegend(ds);
     renderChart(ds);

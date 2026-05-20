@@ -491,11 +491,6 @@ async function loadClientView() {
       </div>`).join('')
     : `<div style="color:#475569;font-size:13px;padding:12px 0;">No metrics yet — upload a CSV to populate data.</div>`;
 
-  // Feedback
-  const feedbackHtml = ds.aiFeedbackText
-    ? `<div style="color:#cbd5e1;font-size:13px;line-height:1.6;white-space:pre-wrap;">${esc(ds.aiFeedbackText)}</div>`
-    : `<div style="color:#334155;font-size:13px;">No feedback written yet.</div>`;
-
   container.innerHTML = `
     <div class="platform-pill-row">${pillsHtml}</div>
 
@@ -517,8 +512,6 @@ async function loadClientView() {
       Upload a CSV to see the performance chart.
     </div>`}
 
-    <div style="font-size:13px;color:#94a3b8;font-weight:500;margin-bottom:8px;">Feedback</div>
-    <div class="feedback-preview">${feedbackHtml}</div>
   `;
 
   // Render chart after DOM has painted
