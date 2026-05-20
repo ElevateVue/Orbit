@@ -302,6 +302,58 @@
     </div>
   </div>
 
+  <!-- New Dataset Modal -->
+  <div class="modal-backdrop hidden" id="newDatasetModal">
+    <div class="modal" style="max-width:520px;">
+      <h2>Add Dataset</h2>
+      <p>Enter the report details. You can add metrics and chart data after saving.</p>
+      <div class="alert alert-err" id="newDatasetErr"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field" style="grid-column:1/-1;">
+          <label>Report Title</label>
+          <input type="text" id="dsTitle" placeholder="e.g. Instagram — Q1 2025" />
+        </div>
+        <div class="field">
+          <label>Platform</label>
+          <select id="dsPlatform">
+            <option value="Instagram">Instagram</option>
+            <option value="Facebook">Facebook</option>
+            <option value="TikTok">TikTok</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Google Ads">Google Ads</option>
+            <option value="Meta Ads">Meta Ads</option>
+            <option value="YouTube">YouTube</option>
+            <option value="X / Twitter">X / Twitter</option>
+            <option value="Email">Email</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Period Label</label>
+          <input type="text" id="dsPeriodLabel" placeholder="e.g. Q1 2025 or Jan 2025" />
+        </div>
+        <div class="field">
+          <label>Period Start <span style="color:#475569;font-weight:400;">(optional)</span></label>
+          <input type="date" id="dsPeriodStart" />
+        </div>
+        <div class="field">
+          <label>Period End <span style="color:#475569;font-weight:400;">(optional)</span></label>
+          <input type="date" id="dsPeriodEnd" />
+        </div>
+        <div class="field" style="grid-column:1/-1;">
+          <label>Notes <span style="color:#475569;font-weight:400;">(optional)</span></label>
+          <input type="text" id="dsNotes" placeholder="Any internal notes about this report" />
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('newDatasetModal')" type="button">Cancel</button>
+        <button class="btn-primary" id="createDatasetBtn" onclick="createDataset()" type="button">Create Dataset</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Delete confirmation -->
   <div class="modal-backdrop hidden" id="deleteModal">
     <div class="modal">

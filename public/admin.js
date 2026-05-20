@@ -180,7 +180,50 @@ function viewDataset(id) {
 }
 
 function openAddDataset() {
-  window.location.href = `/report.html?dashboardId=${currentDash.id}&new=1`;
+  // Reset form
+  document.getElementById('dsTitle').value = '';
+  document.getElementById('dsPlatform').value = 'Instagram';
+  document.getElementById('dsPeriodLabel').value = '';
+  document.getElementById('dsPeriodStart').value = '';
+  document.getElementById('dsPeriodEnd').value = '';
+  document.getElementById('dsNotes').value = '';
+  document.getElementById('newDatasetErr').style.display = 'none';
+  openModal('newDatasetModal');
+}
+
+async function createDataset() {
+  const title = document.getElementById('dsTitle').value.trim();
+  const platform = document.getElementById('dsPlatform').value;
+  const periodLabel = document.getElementById('dsPeriodLabel').value.trim();
+  const periodStart = document.getElementById('dsPeriodStart').value || null;
+  const periodEnd = document.getElementById('dsPeriodEnd').value || null;
+  const notes = document.getElementById('dsNotes').value.trim() || null;
+  const errEl = document.getElementById('newDatasetErr');
+  errEl.style.display = 'none';
+
+  if (!title) { errEl.textContent = 'Report title is required.'; errEl.style.display = 'block'; return; }
+  if (!periodLabel) { errEl.textContent = 'Period label is required (e.g. "Q1 2025").'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('createDatasetBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  const res = await authFetch(`/api/datasets?dashboardId=${currentDash.id}`, {
+    method: 'POST',
+    body: JSON.stringify({ title, platform, periodLabel, periodStart, periodEnd, notes })
+  });
+  const data = await res.json();
+
+  btn.disabled = false; btn.textContent = 'Create Dataset';
+
+  if (!res.ok) {
+    errEl.textContent = data.error || 'Failed to create dataset.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeModal('newDatasetModal');
+  // Redirect to the report page to fill in metrics
+  window.location.href = `/report.html?datasetId=${data.id}&dashboardId=${currentDash.id}`;
 }
 
 // ── Members ───────────────────────────────────────────────────────────────────
