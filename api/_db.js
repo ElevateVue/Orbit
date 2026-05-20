@@ -63,16 +63,29 @@ async function initDb() {
       updated_at TEXT NOT NULL
     );
   `);
-  // Handle old schema columns that may exist from a previous version
-  await pool.query(`
-    ALTER TABLE users ALTER COLUMN account_type DROP NOT NULL;
-  `).catch(() => {}); // Ignore if column doesn't exist
-  await pool.query(`
-    ALTER TABLE users ALTER COLUMN company_name DROP NOT NULL;
-  `).catch(() => {});
-  await pool.query(`
-    ALTER TABLE users ALTER COLUMN dashboard_access_mode DROP NOT NULL;
-  `).catch(() => {});
+  // ── Migrate old users table columns (drop legacy NOT NULL constraints) ──
+  await pool.query('ALTER TABLE users ALTER COLUMN account_type DROP NOT NULL').catch(() => {});
+  await pool.query('ALTER TABLE users ALTER COLUMN company_name DROP NOT NULL').catch(() => {});
+  await pool.query('ALTER TABLE users ALTER COLUMN dashboard_access_mode DROP NOT NULL').catch(() => {});
+
+  // ── Migrate old datasets table — add any missing columns ──
+  const datasetCols = [
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS dashboard_id TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS period_label TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS period_start TEXT`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS period_end TEXT`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS metrics_json TEXT NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS daily_points_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS ai_feedback_text TEXT`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS notes TEXT`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS created_at TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE datasets ADD COLUMN IF NOT EXISTS updated_at TEXT NOT NULL DEFAULT ''`,
+  ];
+  for (const sql of datasetCols) {
+    await pool.query(sql).catch(() => {});
+  }
 
   ready = true;
 }
