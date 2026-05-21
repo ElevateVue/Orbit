@@ -96,6 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.selectedDatasetId = state.datasets[0].id;
     }
 
+    isolatedKey = null;
     renderPlatformSelector();
     renderSelected();
     setStatus('');
@@ -112,6 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     platformSelector.querySelectorAll('[data-dsid]').forEach(btn => {
       btn.addEventListener('click', () => {
         state.selectedDatasetId = btn.dataset.dsid;
+        isolatedKey = null;
         renderPlatformSelector();
         renderSelected();
       });
@@ -142,6 +144,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ── Metric cards ──────────────────────────────────────────────────────────
+  let isolatedKey = null; // null = show all
+
   function renderMetrics(ds) {
     const keys = getMetricKeys(ds);
     const metrics = ds.metrics || {};
@@ -150,11 +154,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     metricGrid.innerHTML = keys.map((k, i) => `
-      <article class="metric-card ${accentClasses[i % accentClasses.length]}">
+      <article class="metric-card ${accentClasses[i % accentClasses.length]}${isolatedKey === k ? ' metric-card-active' : ''}"
+        style="cursor:pointer;" onclick="isolateMetric('${k}')">
         <span>${friendlyLabel(k)}</span>
         <strong>${shortNum(metrics[k] || 0)}</strong>
+        ${isolatedKey === k ? `<div style="font-size:10px;opacity:0.6;margin-top:4px;">click to show all</div>` : ''}
       </article>`
     ).join('');
+  }
+
+  function isolateMetric(key) {
+    const ds = state.datasets.find(d => d.id === state.selectedDatasetId);
+    if (!ds) return;
+
+    if (isolatedKey === key) {
+      // Toggle off — show all
+      isolatedKey = null;
+      chartLegend.querySelectorAll('.legend-chip').forEach(b => b.classList.add('active'));
+    } else {
+      // Isolate this metric
+      isolatedKey = key;
+      chartLegend.querySelectorAll('.legend-chip').forEach(b => {
+        b.classList.toggle('active', b.dataset.key === key);
+      });
+    }
+    renderMetrics(ds);
+    renderChart(ds);
   }
 
   // ── Legend — built from same keys as metric cards ─────────────────────────

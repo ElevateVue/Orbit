@@ -115,7 +115,9 @@
     .platform-pill { padding: 6px 14px; border-radius: 20px; border: 1px solid #334155; font-size: 12px; font-weight: 600; color: #94a3b8; cursor: pointer; transition: all 0.15s; background: none; }
     .platform-pill.active { background: #6366f1; border-color: #6366f1; color: #fff; }
     .metric-preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
-    .metric-preview-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
+    .metric-preview-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 14px; transition: opacity 0.15s; }
+    .metric-preview-card:hover { border-color: #6366f1; }
+    .metric-preview-card.metric-card-active { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.25); }
     .metric-preview-card .m-label { font-size: 11px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
     .metric-preview-card .m-value { font-size: 22px; color: #f1f5f9; font-weight: 700; }
     .chart-preview-wrap { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 20px; }

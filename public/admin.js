@@ -157,6 +157,7 @@ let allDatasets = [];
 let pendingDeleteDatasetId = null;
 let clientViewChart = null;
 let clientViewDatasetId = null;
+let clientIsolatedKey = null;
 
 async function loadDatasets() {
   if (!currentDash) return;
@@ -488,12 +489,15 @@ async function loadClientView() {
 
   const COLORS = ['#74beff','#65dfb2','#ffb05b','#f084c6','#b79aff','#ffe06d','#6fc1ff','#ff7eb3'];
 
-  // Metric cards — same keys, same order as chart lines
+  // Metric cards — same keys, same order as chart lines; clickable to isolate
   const metricCardsHtml = metricKeys.length
     ? metricKeys.map((k, i) => `
-      <div class="metric-preview-card" style="border-top:3px solid ${COLORS[i % COLORS.length]}">
+      <div class="metric-preview-card${clientIsolatedKey === k ? ' metric-card-active' : ''}"
+        style="border-top:3px solid ${COLORS[i % COLORS.length]};cursor:pointer;"
+        onclick="isolateClientMetric('${k}')">
         <div class="m-label">${friendlyKey(k)}</div>
         <div class="m-value">${shortNum(metrics[k] || 0)}</div>
+        ${clientIsolatedKey === k ? `<div style="font-size:10px;opacity:0.6;margin-top:3px;">click to show all</div>` : ''}
       </div>`).join('')
     : `<div style="color:#475569;font-size:13px;padding:12px 0;">No metrics yet — upload a CSV to populate data.</div>`;
 
@@ -538,6 +542,12 @@ async function loadClientView() {
 
 function selectClientDataset(id) {
   clientViewDatasetId = id;
+  clientIsolatedKey = null;
+  loadClientView();
+}
+
+function isolateClientMetric(key) {
+  clientIsolatedKey = (clientIsolatedKey === key) ? null : key;
   loadClientView();
 }
 
@@ -562,12 +572,16 @@ function renderClientViewChart(dailyPoints, metricKeys, colors) {
 
   const labels = dailyPoints.map(p => p.date || p.label || '');
 
-  // All metric keys — no slice limit, same order & colors as metric cards
-  const chartDatasets = metricKeys.map((k, i) => ({
-    key: k,
-    color: COLORS[i % COLORS.length],
-    values: dailyPoints.map(p => Number(p[k]) || 0)
-  }));
+  // Filter keys by isolation (clicking a metric card shows only that metric)
+  const activeKeys = clientIsolatedKey ? [clientIsolatedKey] : metricKeys;
+  const chartDatasets = activeKeys.map(k => {
+    const i = metricKeys.indexOf(k);
+    return {
+      key: k,
+      color: COLORS[i % COLORS.length],
+      values: dailyPoints.map(p => Number(p[k]) || 0)
+    };
+  });
 
   clientViewChart.setData(labels, chartDatasets);
 
