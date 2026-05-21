@@ -480,16 +480,29 @@ async function loadClientView() {
   const ds = datasets.find(d => d.id === clientViewDatasetId) || datasets[0];
   const metrics = ds.metrics || {};
   const dailyPoints = ds.dailyPoints || [];
-  const metricKeys = Object.keys(metrics).filter(k => metrics[k] > 0);
 
-  // Metric cards
+  // Derive keys from dailyPoints first (most reliable), fallback to metrics
+  const metricKeys = dailyPoints.length
+    ? Object.keys(dailyPoints[0]).filter(k => k !== 'date' && k !== 'label')
+    : Object.keys(metrics).filter(k => metrics[k] > 0);
+
+  const COLORS = ['#74beff','#65dfb2','#ffb05b','#f084c6','#b79aff','#ffe06d','#6fc1ff','#ff7eb3'];
+
+  // Metric cards — same keys, same order as chart lines
   const metricCardsHtml = metricKeys.length
-    ? metricKeys.map(k => `
-      <div class="metric-preview-card">
-        <div class="m-label">${k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ')}</div>
-        <div class="m-value">${shortNum(metrics[k])}</div>
+    ? metricKeys.map((k, i) => `
+      <div class="metric-preview-card" style="border-top:3px solid ${COLORS[i % COLORS.length]}">
+        <div class="m-label">${friendlyKey(k)}</div>
+        <div class="m-value">${shortNum(metrics[k] || 0)}</div>
       </div>`).join('')
     : `<div style="color:#475569;font-size:13px;padding:12px 0;">No metrics yet — upload a CSV to populate data.</div>`;
+
+  // Legend chips matching the chart lines
+  const legendHtml = metricKeys.map((k, i) => `
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8;margin-right:12px;">
+      <span style="display:inline-block;width:10px;height:3px;border-radius:2px;background:${COLORS[i % COLORS.length]};"></span>
+      ${friendlyKey(k)}
+    </span>`).join('');
 
   container.innerHTML = `
     <div class="platform-pill-row">${pillsHtml}</div>
@@ -502,7 +515,10 @@ async function loadClientView() {
 
     ${dailyPoints.length ? `
     <div class="chart-preview-wrap">
-      <div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">Performance Over Time</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <span style="font-size:12px;color:#94a3b8;">Performance Over Time</span>
+        <div>${legendHtml}</div>
+      </div>
       <div class="chart-canvas-wrap">
         <canvas id="clientViewCanvas"></canvas>
         <div id="clientViewTooltip" class="chart-tooltip"></div>
@@ -516,7 +532,7 @@ async function loadClientView() {
 
   // Render chart after DOM has painted
   if (dailyPoints.length && metricKeys.length) {
-    requestAnimationFrame(() => setTimeout(() => renderClientViewChart(dailyPoints, metricKeys), 80));
+    requestAnimationFrame(() => setTimeout(() => renderClientViewChart(dailyPoints, metricKeys, COLORS), 80));
   }
 }
 
@@ -525,15 +541,15 @@ function selectClientDataset(id) {
   loadClientView();
 }
 
-function renderClientViewChart(dailyPoints, metricKeys) {
+function renderClientViewChart(dailyPoints, metricKeys, colors) {
   const canvas = document.getElementById('clientViewCanvas');
   if (!canvas) return;
   clientViewChart = null;
 
+  const COLORS = colors || ['#74beff','#65dfb2','#ffb05b','#f084c6','#b79aff','#ffe06d','#6fc1ff','#ff7eb3'];
   const tooltip = document.getElementById('clientViewTooltip');
   const dpr = window.devicePixelRatio || 1;
 
-  // Size canvas to its container's actual pixel dimensions
   const container = canvas.parentElement;
   const w = container ? container.clientWidth || container.offsetWidth : 800;
   const h = 220;
@@ -544,17 +560,17 @@ function renderClientViewChart(dailyPoints, metricKeys) {
 
   clientViewChart = new OrbitChart(canvas, tooltip);
 
-  const labels = dailyPoints.map(p => p.date);
-  const chartKeys = metricKeys.slice(0, 3);
-  const chartDatasets = chartKeys.map(k => ({
+  const labels = dailyPoints.map(p => p.date || p.label || '');
+
+  // All metric keys — no slice limit, same order & colors as metric cards
+  const chartDatasets = metricKeys.map((k, i) => ({
     key: k,
-    label: k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' '),
-    values: dailyPoints.map(p => Number(p[k]) || 0)  // OrbitChart uses .values not .data
+    color: COLORS[i % COLORS.length],
+    values: dailyPoints.map(p => Number(p[k]) || 0)
   }));
 
   clientViewChart.setData(labels, chartDatasets);
 
-  // Re-render once layout is stable (handles flex/grid reflow delay)
   requestAnimationFrame(() => {
     const w2 = container ? container.clientWidth || container.offsetWidth : 800;
     if (w2 !== w) {
@@ -562,6 +578,10 @@ function renderClientViewChart(dailyPoints, metricKeys) {
       clientViewChart.render();
     }
   });
+}
+
+function friendlyKey(k) {
+  return String(k).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function shortNum(n) {

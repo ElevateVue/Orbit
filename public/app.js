@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       setStatus('No data available yet.');
       periodLabel.textContent = 'No data yet';
       renderPlatformSelector();
-      renderMetrics({}, null);
+      renderMetrics({});
       renderChart(null);
       renderReportList();
       return;
@@ -123,17 +123,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!ds) return;
 
     periodLabel.textContent = ds.periodLabel || ds.title;
-    renderMetrics(ds.metrics || {}, ds.platform);
+    renderMetrics(ds);
     renderLegend(ds);
     renderChart(ds);
     renderReportList();
   }
 
-  // ── Metric cards ──────────────────────────────────────────────────────────
-  const accentClasses = ['accent-cyan', 'accent-violet', 'accent-pink', 'accent-orange', 'accent-green', 'accent-yellow', 'accent-blue'];
+  // Shared color palette — same order used for both cards, legend, and chart lines
+  const CHART_COLORS = ['#74beff','#65dfb2','#ffb05b','#f084c6','#b79aff','#ffe06d','#6fc1ff','#ff7eb3'];
+  const accentClasses = ['accent-cyan','accent-violet','accent-pink','accent-orange','accent-green','accent-yellow','accent-blue'];
 
-  function renderMetrics(metrics, platform) {
-    const keys = Object.keys(metrics).filter(k => metrics[k] > 0);
+  // Derive stable ordered key list from a dataset (dailyPoints first, fallback to metrics)
+  function getMetricKeys(ds) {
+    if (ds.dailyPoints?.length) {
+      return Object.keys(ds.dailyPoints[0]).filter(k => k !== 'date' && k !== 'label');
+    }
+    return Object.keys(ds.metrics || {}).filter(k => ds.metrics[k] > 0);
+  }
+
+  // ── Metric cards ──────────────────────────────────────────────────────────
+  function renderMetrics(ds) {
+    const keys = getMetricKeys(ds);
+    const metrics = ds.metrics || {};
     if (!keys.length) {
       metricGrid.innerHTML = `<p style="color:#475569;font-size:13px;padding:8px 0;">No metrics data yet.</p>`;
       return;
@@ -141,22 +152,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     metricGrid.innerHTML = keys.map((k, i) => `
       <article class="metric-card ${accentClasses[i % accentClasses.length]}">
         <span>${friendlyLabel(k)}</span>
-        <strong>${shortNum(metrics[k])}</strong>
+        <strong>${shortNum(metrics[k] || 0)}</strong>
       </article>`
     ).join('');
   }
 
-  // ── Legend ────────────────────────────────────────────────────────────────
-  const CHART_COLORS = ['#74beff','#65dfb2','#ffb05b','#f084c6','#b79aff','#ffe06d','#6fc1ff','#ff7eb3'];
-
+  // ── Legend — built from same keys as metric cards ─────────────────────────
   function renderLegend(ds) {
-    const keys = ds.dailyPoints?.length
-      ? Object.keys(ds.dailyPoints[0]).filter(k => k !== 'date' && k !== 'label')
-      : Object.keys(ds.metrics || {}).filter(k => ds.metrics[k] > 0);
-
-    chartLegend.innerHTML = keys.slice(0, 8).map((k, i) => `
-      <button class="legend-chip active" type="button" data-key="${k}"
-        style="--dot-color:${CHART_COLORS[i % CHART_COLORS.length]}">
+    const keys = getMetricKeys(ds);
+    chartLegend.innerHTML = keys.map((k, i) => `
+      <button class="legend-chip active" type="button" data-key="${k}" data-color-idx="${i}">
         <span class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]}"></span>
         ${friendlyLabel(k)}
       </button>`
@@ -170,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // ── Chart ─────────────────────────────────────────────────────────────────
+  // ── Chart — uses same key order & colors as legend/cards ─────────────────
   function renderChart(ds) {
     if (!ds || !ds.dailyPoints?.length) {
       chartPeriodLabel.textContent = 'No data available';
@@ -178,15 +183,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const activeKeys = Array.from(chartLegend.querySelectorAll('.legend-chip.active'))
-      .map(b => b.dataset.key);
-
+    // Get active keys AND their original color index (preserved from legend)
+    const activeChips = Array.from(chartLegend.querySelectorAll('.legend-chip.active'));
     const labels = ds.dailyPoints.map(p => p.date || p.label || '');
-    const datasets = activeKeys.map((k, i) => ({
-      key: k,
-      color: CHART_COLORS[i % CHART_COLORS.length],
-      values: ds.dailyPoints.map(p => Number(p[k]) || 0)
-    }));
+
+    const datasets = activeChips.map(btn => {
+      const k = btn.dataset.key;
+      const colorIdx = parseInt(btn.dataset.colorIdx) || 0;
+      return {
+        key: k,
+        color: CHART_COLORS[colorIdx % CHART_COLORS.length],
+        values: ds.dailyPoints.map(p => Number(p[k]) || 0)
+      };
+    });
 
     chartPeriodLabel.textContent = ds.periodLabel || ds.title;
     chart.setData(labels, datasets);
