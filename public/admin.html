@@ -142,6 +142,71 @@
     .csv-col-map label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block; }
     .csv-col-map select { width: 100%; padding: 7px 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f1f5f9; font-size: 12px; }
 
+    /* Social tab — accounts grid */
+    .social-accounts-grid { display: flex; flex-wrap: wrap; gap: 10px; min-height: 20px; }
+    .social-account-card {
+      display: flex; align-items: center; gap: 10px;
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 10px 14px; flex: 0 0 auto;
+    }
+    .social-platform-icon {
+      width: 34px; height: 34px; border-radius: 7px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; color: #fff;
+    }
+    .social-account-info { flex: 1; min-width: 0; }
+    .social-account-name { font-size: 13px; color: #f1f5f9; font-weight: 500; }
+    .social-account-handle { font-size: 11px; color: #64748b; }
+    .social-token-warn { font-size: 10px; color: #f87171; margin-top: 2px; }
+    .social-connect-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+    /* Social tab — post list */
+    .social-filter-bar { display: flex; gap: 2px; flex-wrap: wrap; }
+    .social-filter-btn {
+      padding: 6px 12px; background: none; border: 1px solid transparent;
+      color: #64748b; font-size: 12px; font-weight: 500; border-radius: 6px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .social-filter-btn:hover { color: #94a3b8; }
+    .social-filter-btn.active { background: #1e293b; border-color: #334155; color: #f1f5f9; }
+    .social-post-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 16px; margin-bottom: 10px;
+    }
+    .social-post-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .sp-status {
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+      text-transform: capitalize; flex-shrink: 0;
+    }
+    .sp-draft    { background: #0f172a; border: 1px solid #334155; color: #94a3b8; }
+    .sp-pending  { background: #422006; border: 1px solid #92400e; color: #fcd34d; }
+    .sp-approved { background: #14532d; border: 1px solid #15803d; color: #86efac; }
+    .sp-scheduled{ background: #1e3a5f; border: 1px solid #1d4ed8; color: #93c5fd; }
+    .sp-published{ background: #14532d; border: 1px solid #15803d; color: #86efac; }
+    .sp-rejected { background: #450a0a; border: 1px solid #991b1b; color: #fca5a5; }
+    .sp-failed   { background: #450a0a; border: 1px solid #991b1b; color: #fca5a5; }
+    .social-acct-pill {
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+      border: 1px solid; display: inline-block;
+    }
+    .social-post-preview { font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 10px; white-space: pre-wrap; word-break: break-word; }
+    .social-post-meta { font-size: 12px; color: #475569; margin-bottom: 10px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .social-post-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .social-empty { color: #475569; font-size: 13px; padding: 24px 0; }
+
+    /* Composer account checkboxes */
+    .composer-accounts-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .composer-acct-label { display: flex; align-items: center; gap: 0; cursor: pointer; }
+    .composer-acct-label input[type="checkbox"] { display: none; }
+    .composer-acct-chip {
+      padding: 5px 10px; border-radius: 6px; border: 1px solid #334155;
+      font-size: 12px; color: #64748b; cursor: pointer; transition: all 0.15s;
+      user-select: none;
+    }
+    .composer-acct-label input:checked + .composer-acct-chip {
+      border-color: #6366f1; color: #a5b4fc; background: rgba(99,102,241,0.1);
+    }
+
     /* Settings */
     .settings-form { max-width: 480px; }
     .logo-upload-area {
@@ -227,6 +292,7 @@
         <div class="tab-bar" id="tabBar">
           <button class="tab-btn active" data-tab="datasets" onclick="switchTab('datasets')">Datasets</button>
           <button class="tab-btn" data-tab="client-view" onclick="switchTab('client-view')">Client View</button>
+          <button class="tab-btn" data-tab="social" onclick="switchTab('social')" id="socialTabBtn">Social</button>
           <button class="tab-btn" data-tab="members" onclick="switchTab('members')" id="membersTabBtn">Members</button>
           <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')" id="settingsTabBtn">Settings</button>
         </div>
@@ -247,6 +313,41 @@
             <div class="preview-label">Client View — what your client sees</div>
             <div id="clientViewInner">
               <div class="preview-empty">No datasets yet — add a dataset to see the client view.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Social tab -->
+        <div class="tab-panel" id="tab-social">
+          <!-- Connected Accounts -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+            <div>
+              <h2 style="font-size:16px;color:#f1f5f9;margin-bottom:2px;">Connected Accounts</h2>
+              <p style="font-size:12px;color:#475569;margin:0;">Connect social accounts to schedule and publish posts.</p>
+            </div>
+          </div>
+          <div id="socialAccountsGrid" class="social-accounts-grid">
+            <div style="color:#475569;font-size:13px;">No accounts connected yet.</div>
+          </div>
+          <div class="social-connect-row" id="socialConnectRow">
+            <button class="btn-xs btn-xs-primary" onclick="connectSocial('facebook')">+ Facebook &amp; Instagram</button>
+            <button class="btn-xs btn-xs-primary" onclick="connectSocial('linkedin')">+ LinkedIn</button>
+          </div>
+
+          <!-- Posts -->
+          <div style="margin-top:32px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+              <div class="social-filter-bar">
+                <button class="social-filter-btn active" data-filter="all"       onclick="filterSocialPosts('all')">All</button>
+                <button class="social-filter-btn"        data-filter="draft"     onclick="filterSocialPosts('draft')">Drafts</button>
+                <button class="social-filter-btn"        data-filter="pending"   onclick="filterSocialPosts('pending')">Pending</button>
+                <button class="social-filter-btn"        data-filter="approved"  onclick="filterSocialPosts('approved')">Approved</button>
+                <button class="social-filter-btn"        data-filter="published" onclick="filterSocialPosts('published')">Published</button>
+              </div>
+              <button class="btn-primary" onclick="openPostComposer()" type="button">+ Create Post</button>
+            </div>
+            <div id="socialPostList">
+              <div class="social-empty">No posts yet. Click <strong>+ Create Post</strong> to get started.</div>
             </div>
           </div>
         </div>
@@ -471,6 +572,65 @@
       </div>
     </div>
   </div>
+
+  <!-- Post Composer Modal -->
+  <div class="modal-backdrop hidden" id="postComposerModal">
+    <div class="modal" style="max-width:580px;">
+      <h2>Create Post</h2>
+      <p>Write your content and choose which connected accounts to post to.</p>
+      <div class="alert alert-err" id="composerErr"></div>
+
+      <div class="field">
+        <label>Internal Label <span style="color:#475569;font-weight:400;">(optional)</span></label>
+        <input type="text" id="composerTitle" placeholder="e.g. Product launch — Week 3" />
+      </div>
+
+      <div class="field">
+        <label>Post Content</label>
+        <textarea id="composerBody" rows="5"
+          style="width:100%;padding:9px 12px;background:#0f172a;border:1px solid #334155;border-radius:7px;color:#f1f5f9;font-size:13px;resize:vertical;font-family:inherit;outline:none;box-sizing:border-box;"
+          placeholder="Write your post…"
+          oninput="document.getElementById('composerCharCount').textContent=this.value.length"></textarea>
+        <div style="text-align:right;font-size:11px;color:#475569;margin-top:3px;"><span id="composerCharCount">0</span> characters</div>
+      </div>
+
+      <div class="field">
+        <label>Image URL <span style="color:#475569;font-weight:400;">(optional — required for Instagram)</span></label>
+        <input type="url" id="composerMediaUrl" placeholder="https://example.com/image.jpg" />
+      </div>
+
+      <div class="field">
+        <label>Post to</label>
+        <div id="composerAccountsWrap" class="composer-accounts-wrap"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('postComposerModal')" type="button">Cancel</button>
+        <button class="btn-ghost" onclick="savePost('draft')" type="button">Save Draft</button>
+        <button class="btn-ghost" onclick="savePost('pending')" type="button">Submit for Approval</button>
+        <button class="btn-primary" id="composerPublishBtn" onclick="saveAndPublishPost()" type="button">Publish Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Post Modal -->
+  <div class="modal-backdrop hidden" id="rejectPostModal">
+    <div class="modal">
+      <h2>Reject Post</h2>
+      <p>Provide feedback so the author can revise.</p>
+      <div class="field">
+        <label>Reason <span style="color:#475569;font-weight:400;">(optional)</span></label>
+        <input type="text" id="rejectNoteInput" placeholder="e.g. Needs brand voice adjustment" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal('rejectPostModal')" type="button">Cancel</button>
+        <button class="btn-danger" onclick="submitRejectPost()" type="button">Reject Post</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global toast -->
+  <div id="globalToast" style="display:none;position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:300;pointer-events:none;"></div>
 
   <script defer src="logo-animation.js"></script>
   <script src="orbit-chart.js"></script>

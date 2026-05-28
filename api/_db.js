@@ -62,6 +62,50 @@ async function initDb() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS social_accounts (
+      id TEXT PRIMARY KEY,
+      dashboard_id TEXT NOT NULL,
+      platform TEXT NOT NULL,
+      account_type TEXT NOT NULL DEFAULT 'page',
+      external_id TEXT NOT NULL,
+      account_name TEXT NOT NULL,
+      account_handle TEXT,
+      avatar_url TEXT,
+      access_token TEXT NOT NULL,
+      token_expires_at TEXT,
+      connected_by TEXT NOT NULL,
+      connected_at TEXT NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      meta_json TEXT NOT NULL DEFAULT '{}',
+      UNIQUE(dashboard_id, platform, external_id)
+    );
+    CREATE TABLE IF NOT EXISTS posts (
+      id TEXT PRIMARY KEY,
+      dashboard_id TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      title TEXT,
+      body TEXT NOT NULL,
+      media_urls TEXT NOT NULL DEFAULT '[]',
+      platform_accounts TEXT NOT NULL DEFAULT '[]',
+      platform_overrides TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'draft',
+      scheduled_at TEXT,
+      published_at TEXT,
+      external_post_ids TEXT NOT NULL DEFAULT '{}',
+      rejection_note TEXT,
+      approved_by TEXT,
+      approved_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS post_approvals (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      approver_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      note TEXT,
+      acted_at TEXT NOT NULL
+    );
   `);
   // ── Migrate old users table columns (drop legacy NOT NULL constraints) ──
   await pool.query('ALTER TABLE users ALTER COLUMN account_type DROP NOT NULL').catch(() => {});

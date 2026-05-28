@@ -52,6 +52,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('emptyNewDashBtn').addEventListener('click', () => openModal('newDashModal'));
 
   await loadDashboards();
+
+  // ── Handle OAuth callback redirect ────────────────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('social_connected') || urlParams.has('social_error')) {
+    history.replaceState({}, '', '/admin.html');
+
+    if (urlParams.has('social_error')) {
+      showToast('Connection failed: ' + decodeURIComponent(urlParams.get('social_error') || 'Unknown error'), 'error');
+    } else {
+      const dbId = urlParams.get('dashboardId');
+      if (dbId && currentDash?.id !== dbId) await selectDashboard(dbId);
+      switchTab('social');
+      showToast('✓ Account connected successfully!');
+    }
+  }
 });
 
 function redirect(url) { window.location.href = url; }
@@ -126,6 +141,8 @@ async function selectDashboard(id) {
   document.getElementById('inviteBtn').style.display = isSuperAdmin ? '' : 'none';
   document.getElementById('addDatasetBtn').style.display = (isSuperAdmin || currentDash.accessLevel === 'admin') ? '' : 'none';
   document.getElementById('deleteDashBtn').style.display = isSuperAdmin ? '' : 'none';
+  document.getElementById('socialTabBtn').style.display = (isSuperAdmin || currentDash.accessLevel === 'admin') ? '' : 'none';
+  document.getElementById('socialConnectRow').style.display = (isSuperAdmin || currentDash.accessLevel === 'admin') ? '' : 'none';
 
   // Populate settings
   document.getElementById('settingsName').value = currentDash.name;
@@ -147,9 +164,10 @@ function switchTab(name) {
   document.querySelectorAll('.tab-panel').forEach(panel => {
     panel.classList.toggle('active', panel.id === 'tab-' + name);
   });
-  if (name === 'datasets') loadDatasets();
-  if (name === 'members') loadMembers();
+  if (name === 'datasets')    loadDatasets();
+  if (name === 'members')     loadMembers();
   if (name === 'client-view') loadClientView();
+  if (name === 'social')      loadSocialTab();
 }
 
 // ── Datasets ──────────────────────────────────────────────────────────────────
@@ -794,6 +812,325 @@ async function deleteDashboard() {
     document.getElementById('dashContent').style.display = 'none';
     document.getElementById('emptyState').style.display = 'flex';
   }
+}
+
+// ── Social Tab ────────────────────────────────────────────────────────────────
+let socialAccounts       = [];
+let socialPosts          = [];
+let currentSocialFilter  = 'all';
+let pendingRejectPostId  = null;
+
+async function loadSocialTab() {
+  if (!currentDash) return;
+  await Promise.all([loadSocialAccounts(), loadSocialPosts()]);
+}
+
+async function loadSocialAccounts() {
+  const res = await authFetch(`/api/social?action=accounts&dashboardId=${currentDash.id}`);
+  if (!res.ok) return;
+  socialAccounts = await res.json();
+  renderSocialAccounts();
+}
+
+function renderSocialAccounts() {
+  const el = document.getElementById('socialAccountsGrid');
+  if (!el) return;
+
+  if (!socialAccounts.length) {
+    el.innerHTML = '<div style="color:#475569;font-size:13px;">No accounts connected yet. Use the buttons below to connect a platform.</div>';
+    return;
+  }
+
+  el.innerHTML = socialAccounts.map(acc => `
+    <div class="social-account-card">
+      <div class="social-platform-icon" style="background:${platformColor(acc.platform)}">
+        ${platformLabel(acc.platform)}
+      </div>
+      <div class="social-account-info">
+        <div class="social-account-name">${esc(acc.account_name)}</div>
+        ${acc.account_handle ? `<div class="social-account-handle">@${esc(acc.account_handle)}</div>` : `<div class="social-account-handle">${esc(acc.platform)} ${esc(acc.account_type)}</div>`}
+        ${acc.tokenExpired ? `<div class="social-token-warn">⚠ Token expired — reconnect</div>` : ''}
+      </div>
+      <button class="btn-xs btn-xs-danger" onclick="disconnectSocial('${acc.id}','${esc(acc.account_name)}')">Disconnect</button>
+    </div>
+  `).join('');
+}
+
+async function connectSocial(platform) {
+  if (!currentDash) return;
+  const res  = await authFetch(`/api/social?action=auth&platform=${platform}&dashboardId=${currentDash.id}`);
+  const data = await res.json();
+
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+  if (data.url) {
+    window.location.href = data.url;
+  }
+}
+
+async function disconnectSocial(id, name) {
+  if (!confirm(`Disconnect "${name}"?`)) return;
+  await authFetch(`/api/social?action=accounts&id=${id}`, { method: 'DELETE' });
+  await loadSocialAccounts();
+}
+
+// ── Post Filtering & Loading ──────────────────────────────────────────────────
+function filterSocialPosts(status) {
+  currentSocialFilter = status;
+  document.querySelectorAll('.social-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === status);
+  });
+  loadSocialPosts();
+}
+
+async function loadSocialPosts() {
+  if (!currentDash) return;
+  const statusParam = (currentSocialFilter && currentSocialFilter !== 'all') ? `&status=${currentSocialFilter}` : '';
+  const res = await authFetch(`/api/social?action=posts&dashboardId=${currentDash.id}${statusParam}`);
+  if (!res.ok) return;
+  socialPosts = await res.json();
+  renderPostList();
+}
+
+function renderPostList() {
+  const el = document.getElementById('socialPostList');
+  if (!el) return;
+  const canManage = currentUser.role === 'super_admin' || currentUser.role === 'admin';
+
+  if (!socialPosts.length) {
+    const label = currentSocialFilter !== 'all' ? currentSocialFilter + ' ' : '';
+    el.innerHTML = `<div class="social-empty">No ${label}posts yet.${currentSocialFilter === 'all' ? ' Click <strong>+ Create Post</strong> to get started.' : ''}</div>`;
+    return;
+  }
+
+  el.innerHTML = socialPosts.map(post => {
+    const acctPills = (post.platformAccounts || []).map(id => {
+      const a = socialAccounts.find(x => x.id === id);
+      if (!a) return '';
+      const c = platformColor(a.platform);
+      return `<span class="social-acct-pill" style="color:${c};border-color:${c}44;background:${c}11;">${platformLabel(a.platform)} ${esc(a.account_name)}</span>`;
+    }).join('');
+
+    const preview  = (post.body || '').slice(0, 200) + (post.body?.length > 200 ? '…' : '');
+    const dateStr  = new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const statusCls = `sp-${post.status}`;
+
+    const actions = [];
+    if (post.status === 'draft') {
+      actions.push(`<button class="btn-xs btn-xs-ghost" onclick="submitForApproval('${post.id}')">Submit for Approval</button>`);
+      if (canManage) actions.push(`<button class="btn-xs btn-xs-primary" onclick="publishNow('${post.id}')">Publish Now</button>`);
+    }
+    if (post.status === 'pending' && canManage) {
+      actions.push(`<button class="btn-xs btn-xs-primary" onclick="doApprovePost('${post.id}')">✓ Approve</button>`);
+      actions.push(`<button class="btn-xs btn-xs-danger"  onclick="openRejectPost('${post.id}')">✗ Reject</button>`);
+      actions.push(`<button class="btn-xs btn-xs-primary" onclick="publishNow('${post.id}')">Publish Now</button>`);
+    }
+    if (post.status === 'approved' && canManage) {
+      actions.push(`<button class="btn-xs btn-xs-primary" onclick="publishNow('${post.id}')">Publish Now</button>`);
+    }
+    if (!['published'].includes(post.status)) {
+      actions.push(`<button class="btn-xs btn-xs-danger" onclick="doDeletePost('${post.id}')">Delete</button>`);
+    }
+
+    return `
+    <div class="social-post-card">
+      <div class="social-post-header">
+        <span class="sp-status ${statusCls}">${post.status}</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">${acctPills || '<span style="color:#475569;font-size:11px;">No accounts</span>'}</div>
+      </div>
+      ${post.title ? `<div style="font-size:13px;font-weight:600;color:#f1f5f9;margin-bottom:6px;">${esc(post.title)}</div>` : ''}
+      <div class="social-post-preview">${esc(preview)}</div>
+      <div class="social-post-meta">
+        <span>By ${esc(post.authorName)} · ${dateStr}</span>
+        ${post.scheduled_at ? `<span>📅 Scheduled: ${new Date(post.scheduled_at).toLocaleDateString()}</span>` : ''}
+        ${post.rejection_note ? `<span style="color:#f87171;">Rejected: ${esc(post.rejection_note)}</span>` : ''}
+      </div>
+      ${actions.length ? `<div class="social-post-actions">${actions.join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Post Composer ─────────────────────────────────────────────────────────────
+function openPostComposer() {
+  const wrap = document.getElementById('composerAccountsWrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = socialAccounts.length
+    ? socialAccounts.map(a => `
+        <label class="composer-acct-label">
+          <input type="checkbox" class="composer-acct-cb" value="${a.id}" checked />
+          <span class="composer-acct-chip">
+            <span style="color:${platformColor(a.platform)};font-weight:700;">${platformLabel(a.platform)}</span>
+            ${esc(a.account_name)}
+          </span>
+        </label>`).join('')
+    : '<div style="color:#64748b;font-size:12px;">No accounts connected. Connect an account first.</div>';
+
+  document.getElementById('composerTitle').value    = '';
+  document.getElementById('composerBody').value     = '';
+  document.getElementById('composerMediaUrl').value = '';
+  document.getElementById('composerCharCount').textContent = '0';
+  document.getElementById('composerErr').style.display = 'none';
+
+  const canPublish = currentUser.role === 'super_admin' || currentUser.role === 'admin';
+  document.getElementById('composerPublishBtn').style.display = canPublish ? '' : 'none';
+
+  openModal('postComposerModal');
+}
+
+function getComposerData() {
+  const body       = document.getElementById('composerBody').value.trim();
+  const title      = document.getElementById('composerTitle').value.trim();
+  const mediaUrl   = document.getElementById('composerMediaUrl').value.trim();
+  const accountIds = [...document.querySelectorAll('.composer-acct-cb:checked')].map(cb => cb.value);
+  return { body, title, mediaUrl, accountIds };
+}
+
+async function savePost(submitStatus) {
+  const { body, title, mediaUrl, accountIds } = getComposerData();
+  const errEl = document.getElementById('composerErr');
+  errEl.style.display = 'none';
+
+  if (!body)             { errEl.textContent = 'Post content is required.'; errEl.style.display = 'block'; return; }
+  if (!accountIds.length){ errEl.textContent = 'Select at least one account.'; errEl.style.display = 'block'; return; }
+
+  const res = await authFetch('/api/social?action=posts', {
+    method: 'POST',
+    body: JSON.stringify({
+      dashboardId: currentDash.id,
+      title: title || undefined,
+      postBody: body,
+      mediaUrls:        mediaUrl ? [mediaUrl] : [],
+      platformAccounts: accountIds,
+      status:           submitStatus
+    })
+  });
+
+  if (!res.ok) {
+    const d = await res.json();
+    errEl.textContent = d.error || 'Failed to save post.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeModal('postComposerModal');
+  showToast(submitStatus === 'pending' ? '✓ Submitted for approval' : '✓ Draft saved');
+  await loadSocialPosts();
+}
+
+async function saveAndPublishPost() {
+  const { body, title, mediaUrl, accountIds } = getComposerData();
+  const errEl = document.getElementById('composerErr');
+  errEl.style.display = 'none';
+
+  if (!body)             { errEl.textContent = 'Post content is required.'; errEl.style.display = 'block'; return; }
+  if (!accountIds.length){ errEl.textContent = 'Select at least one account.'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('composerPublishBtn');
+  btn.disabled = true; btn.textContent = 'Publishing…';
+
+  // Create then immediately publish
+  const createRes = await authFetch('/api/social?action=posts', {
+    method: 'POST',
+    body: JSON.stringify({
+      dashboardId: currentDash.id, title: title || undefined,
+      postBody: body, mediaUrls: mediaUrl ? [mediaUrl] : [],
+      platformAccounts: accountIds, status: 'draft'
+    })
+  });
+
+  btn.disabled = false; btn.textContent = 'Publish Now';
+
+  if (!createRes.ok) {
+    const d = await createRes.json();
+    errEl.textContent = d.error || 'Failed to create post.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const post = await createRes.json();
+  closeModal('postComposerModal');
+  await doPublishPost(post.id);
+}
+
+async function submitForApproval(id) {
+  await authFetch(`/api/social?action=posts&id=${id}`, {
+    method: 'PUT', body: JSON.stringify({ status: 'pending' })
+  });
+  showToast('✓ Submitted for approval');
+  await loadSocialPosts();
+}
+
+async function doApprovePost(id) {
+  await authFetch(`/api/social?action=approve&id=${id}`, { method: 'POST' });
+  showToast('✓ Post approved');
+  await loadSocialPosts();
+}
+
+function openRejectPost(id) {
+  pendingRejectPostId = id;
+  document.getElementById('rejectNoteInput').value = '';
+  openModal('rejectPostModal');
+}
+
+async function submitRejectPost() {
+  const note = document.getElementById('rejectNoteInput').value.trim();
+  await authFetch(`/api/social?action=reject&id=${pendingRejectPostId}`, {
+    method: 'POST', body: JSON.stringify({ note })
+  });
+  closeModal('rejectPostModal');
+  pendingRejectPostId = null;
+  showToast('Post rejected', 'warn');
+  await loadSocialPosts();
+}
+
+async function publishNow(id) {
+  if (!confirm('Publish this post to all selected platforms now?')) return;
+  await doPublishPost(id);
+}
+
+async function doPublishPost(id) {
+  const res  = await authFetch(`/api/social?action=publish&id=${id}`, { method: 'POST' });
+  const data = await res.json();
+
+  if (data.ok) {
+    showToast('✓ Published successfully!');
+  } else {
+    const errs = (data.errors || []).map(e => `${e.name}: ${e.error}`).join('\n');
+    showToast('Publish failed — ' + (errs || 'check your account connections'), 'error');
+  }
+  await loadSocialPosts();
+}
+
+async function doDeletePost(id) {
+  if (!confirm('Delete this post?')) return;
+  await authFetch(`/api/social?action=posts&id=${id}`, { method: 'DELETE' });
+  await loadSocialPosts();
+}
+
+// ── Social Helpers ────────────────────────────────────────────────────────────
+function platformColor(platform) {
+  return { facebook: '#1877f2', instagram: '#e1306c', linkedin: '#0077b5', twitter: '#1da1f2', reddit: '#ff4500' }[platform] || '#6366f1';
+}
+function platformLabel(platform) {
+  return { facebook: 'FB', instagram: 'IG', linkedin: 'LI', twitter: 'TW', reddit: 'RD' }[platform] || platform.slice(0,2).toUpperCase();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'ok') {
+  const el = document.getElementById('globalToast');
+  if (!el) return;
+  const styles = {
+    ok:   { bg: '#14532d', border: '#15803d', color: '#86efac' },
+    error:{ bg: '#450a0a', border: '#991b1b', color: '#fca5a5' },
+    warn: { bg: '#422006', border: '#92400e', color: '#fcd34d' }
+  }[type] || { bg: '#1e293b', border: '#334155', color: '#f1f5f9' };
+  el.textContent = msg;
+  el.style.cssText = `display:block;position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:300;pointer-events:none;background:${styles.bg};border:1px solid ${styles.border};color:${styles.color};`;
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────────────
